@@ -37,6 +37,7 @@ test('onValue', function() {
         value = val;
     });
 
+    // If the stream has a value, the listeners gets called immediately it is installed:
     assert(value === 1);
 
     var value2;
@@ -45,18 +46,21 @@ test('onValue', function() {
         value2 = val;
     });
 
+    // Stream can have multiple listeners:
     assert(value === 1 && value2 === 1);
-
     s.set(2);
     assert(value === 2 && value2 === 2);
 });
 
+// Assertion check for deep equality.
 assert.eq = function(x, y) {
     if (JSON.stringify(x) !== JSON.stringify(y)) {
         throw new Error('Got ' + JSON.stringify(x) + ', expected ' + JSON.stringify(y));
     }
 };
 
+// Helper to check that stream eventually gets values of 'values' in that order.
+// TODO stack trace won't reveal the source of the error but at least you get something.
 assert.streamGetsValues = function(stream, values) {
     var result = [];
     stream.onValue(function(value) {
@@ -65,7 +69,7 @@ assert.streamGetsValues = function(stream, values) {
 
     setTimeout(function() {
         assert.eq(result, values);
-    });
+    }, 1);
 };
 
 test('filter', function() {
@@ -88,7 +92,7 @@ test('flatMap TODO not real test', function() {
 
     var s = stream();
 
-    s.flatMap(function (n) {
+    var s2 = s.flatMap(function (n) {
         var result = stream(n);
         setTimeout(function () {
             result.set(n + 1);
@@ -103,6 +107,7 @@ test('flatMap TODO not real test', function() {
     setTimeout(function() { s.set(15); }, 200);
     setTimeout(function() { s.set(20); }, 300);
 
+    s2.log('flatmapped');
 });
 
 function inc(x) { return x + 1; }
