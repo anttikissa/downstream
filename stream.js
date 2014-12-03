@@ -36,19 +36,22 @@ stream.fromDomEvent = function(selector, eventType) {
     return result;
 };
 
+var defer = typeof setImmediate === 'function' ? setImmediate : setTimeout;
+
 // Produce a stream that yields the elements of array as fast as it can.
 stream.fromArray = function(array) {
     var result = stream();
 
     var index = 0;
-    var interval = setInterval(function() {
+    function takeNext() {
         if (index === array.length) {
-            // TODO use setImmediate or something.
-            clearInterval(interval);
             return;
         }
         result.set(array[index++]);
-    });
+        defer(takeNext);
+    }
+
+    takeNext();
 
     return result;
 };
@@ -120,6 +123,9 @@ Stream.prototype.set = function(value) {
 
         s.listeners.forEach(function(f) {
             if (s.wasChanged()) {
+                // TODO eventually there will probably come a need to set 'this' to 's'
+                // for the following function call. When that happens, remember to change
+                // .onValue(), too.
                 f(s.value);
             }
         });
@@ -156,31 +162,46 @@ Stream.prototype.addChild = function(child) {
 
 // Chapter 3. Stream operators
 
-// Copy all attributes from 'source' to 'target'.
-function extend(target, source) {
-    if (source) {
-        for (var key in source) {
-            target[key] = source[key];
+// Copy all attributes from 'sources' to 'target'.
+function extend(target /*, sources ... */) {
+    for (var i = 1; i < arguments.length; i++) {
+        if (arguments[i]) {
+            for (var key in arguments[i]) {
+                target[key] = arguments[i][key];
+            }
         }
     }
 }
 
-// Stream.derive and stream.derivedStream
+// Create a stream that depends on this stream, install an update handler
+// on it and calls it if this stream has a value.  This should be used
+// by most stream operators that take a single parent stream, such as
+// map, filter, uniq, etc.
 Stream.prototype.derive = function(update, options) {
-    // TODO inline just for clarity
-    return stream.derivedStream([ this ], update, options);
+    var result = stream();
+
+    extend(result, options, { update: update });
+
+    this.addChild(result);
+
+    if (this.hasValue()) {
+        result.update(this);
+    }
+
+    return result;
+
 };
 
+// Exactly like Stream.derive(), but works on two or more streams.
 stream.derivedStream = function(parents, update, options) {
     var result = stream();
 
-    extend(result, options);
+    extend(result, options, { update: update });
 
     parents.forEach(function(parent) {
         parent.addChild(result);
     });
 
-    result.update = update;
     if (parents.some(function(parent) { return parent.hasValue(); })) {
         result.update.apply(result, result.parents);
     }
@@ -188,6 +209,13 @@ stream.derivedStream = function(parents, update, options) {
     return result;
 };
 
+// A stream whose value is updated with 'f(x)' whenever this
+// stream's value is updated with 'x'.
+//
+// var s2 = s1.map(function(value) { return value + 1; });
+//
+// s1: 1 1 2 2 5 6 6
+// s2: 2 2 3 3 6 7 7
 Stream.prototype.map = function(f) {
     function mapUpdate(parent) {
         this.newValue(this.f(parent.value));
@@ -196,6 +224,13 @@ Stream.prototype.map = function(f) {
     return this.derive(mapUpdate, { f: f });
 };
 
+// Return a stream whose value is updated with 'x' whenever this
+// stream's value is updated with 'x', if 'f(x)' is true.
+//
+// var s2 = s1.filter(isOdd);
+//
+// s1: 1 1 2 2 5 6 6
+// s2: 1 1     5
 Stream.prototype.filter = function(f) {
     function filterUpdate(parent) {
         if (this.f(parent.value)) {
@@ -206,9 +241,24 @@ Stream.prototype.filter = function(f) {
     return this.derive(filterUpdate, { f: f });
 };
 
-Stream.prototype.combine = function(other, f) {
-    var that = this;
+// Return a stream that follows its parent's values, but only updates
+// when the value changes.  Similar to the UNIX tool uniq(1).
+//
+// var s2 = s1.uniq()
+//
+// s1: 1 1 2 2 5 6 6
+// s2: 1   2   5 6
+Stream.prototype.uniq = function() {
+    function uniqUpdate(parent) {
+        if (parent.value !== this.value) {
+            this.newValue(parent.value);
+        }
+    }
 
+    return this.derive(uniqUpdate);
+};
+
+Stream.prototype.combine = function(other, f) {
     function combineUpdate(parent1, parent2) {
         this.newValue(this.f(parent1.value, parent2.value));
     };
@@ -233,10 +283,21 @@ Stream.prototype.hasValue = function() {
 
 Stream.prototype.onValue = function(f) {
     if (this.hasValue()) {
-        // TODO should 'this' be the context of f?
         f(this.value);
     }
+
+    this.addListener(f);
+};
+
+Stream.prototype.addListener = function(f) {
     this.listeners.push(f);
+};
+
+Stream.prototype.removeListener = function(f) {
+    var idx = this.listeners.indexOf(f);
+    if (idx !== -1) {
+        this.listeners.splice(idx, 1);
+    }
 };
 
 Stream.prototype.log = function(prefix) {
@@ -346,6 +407,7 @@ Stream.prototype.flatMapLatest = function(f) {
     return this.derive(flatMapLatestUpdate);
 };
 
+// Now what's the purpose of this, I don't know
 Stream.prototype.toProperty = function(initial) {
     function toPropertyUpdate(parent) {
         this.newValue(parent.value);
@@ -356,3 +418,6 @@ Stream.prototype.toProperty = function(initial) {
     return result;
 };
 
+if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
+    module.exports = stream;
+}
