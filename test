@@ -1,0 +1,4 @@
+#!/bin/sh
+
+node generate-tests.js 
+# > stream-generated-tests.js
