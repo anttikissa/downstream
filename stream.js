@@ -56,6 +56,41 @@ stream.fromArray = function(array) {
     return result;
 };
 
+// Make a stream from a promise.
+// Does not handle errors right now (since they're not supported).
+stream.fromPromise = function(promise) {
+    var result = stream();
+
+    promise.then(function(value) {
+        result.set(value);
+    });
+
+    return result;
+};
+
+stream.fromEventTarget = function(target, eventName, eventTransformer) {
+    if (eventTransformer) {
+        return stream.fromEventTarget(target, eventName).map(eventTransformer);
+    }
+
+    var result = stream();
+
+    function eventListener(event) {
+        result.set(event);
+    }
+
+    // Replicates Bacon.js behavior.
+    if (target.addEventListener) {
+        target.addEventListener(eventName, eventListener);
+    } else if (target.bind) {
+        target.bind(eventName, eventListener);
+    } else {
+        target.on(eventName, eventListener);
+    }
+
+    return result;
+};
+
 // Given that the value of 'source' is set, which streams should we consider
 // updating and in which order?
 //
