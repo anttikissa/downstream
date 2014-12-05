@@ -382,6 +382,8 @@ function functionFromAnything(anything) {
     }
 }
 
+// TODO map(Stream s) -> s.sampledBy(this)?
+
 // A stream whose value is updated with 'f(x)' whenever this
 // stream's value is updated with 'x'.
 //
@@ -416,11 +418,13 @@ Stream.prototype.map = function(f) {
 // s1: 1 1 2 2 5 6 6
 // s2: 1 1     5
 Stream.prototype.filter = function(f) {
+    f = functionFromAnything(f);
+
     function filterUpdate(parent) {
         if (this.f(parent.value)) {
             this.newValue(parent.value);
         }
-    };
+    }
 
     return this.derive(filterUpdate, { f: f });
 };
@@ -460,6 +464,32 @@ Stream.prototype.sampledBy = function(other) {
     return stream.derivedStream([ this, other ], sampledByUpdate);
 };
 
+// Like bacon's takeWhile(property), I assume; note that takeWhile
+// does not produce new values if other's value (only) changes.
+Stream.prototype.takeWhile = function(other) {
+
+    // TODO does not work really - actual takeWhile ends the stream
+    // one the other one produces false.
+    function takeWhileFunctionUpdate(source) {
+        // Umm... should other() be given 'source' as argument?
+        // Should it be put through functionFromAnything?
+        if (other()) {
+            this.newValue(source.value);
+        }
+    }
+
+    if (typeof other === 'function') {
+        return this.derive(takeWhileFunctionUpdate);
+    }
+
+    function takeWhileUpdate(source, sampler) {
+        if (source.wasChanged() && sampler.value) {
+            this.newValue(source.value);
+        }
+    }
+
+    return stream.derivedStream([ this, other ], takeWhileUpdate);
+}
 
 Stream.prototype.hasValue = function() {
     return typeof this.value !== 'undefined';
