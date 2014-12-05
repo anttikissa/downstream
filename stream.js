@@ -19,7 +19,8 @@ function stream(value) {
 // (Stream.wasChanged() tells if a stream was.)
 stream.version = 0;
 
-// Chapter 2 - Stream utilities
+// Chapter 2 - Stream utilities.
+// Functions that create new streams or help creating them.
 
 // Produce a stream that yields values whenever event 'eventType' is fired for
 // selector specified by 'selector'.  Assumes a single DOM element that matches
@@ -130,6 +131,69 @@ stream.fromArray = function(array) {
 
     return result;
 };
+
+stream.fromBinder = function(f) {
+    var result = stream();
+
+    function sink(value) {
+        result.set(value);
+    }
+
+    f(sink);
+
+    return result;
+};
+
+stream.interval = function(interval, value) {
+    return stream.repeatedly(interval, [value]);
+};
+
+stream.sequentially = function(interval, values) {
+    var result = stream();
+
+    var idx = 0;
+    var intervalId = setInterval(function() {
+        if (idx >= values.length) {
+            clearInterval(intervalId);
+        } else {
+            result.set(values[idx++]);
+        }
+    }, interval);
+
+    return result;
+};
+
+stream.repeatedly = function(interval, values) {
+    assert(values.length);
+
+    var result = stream();
+
+    var idx = 0;
+    setInterval(function() {
+        while (idx >= values.length) {
+            idx -= values.length;
+        }
+        result.set(values[idx++]);
+    }, interval);
+
+    return result;
+};
+
+stream.never = function() {
+    return stream();
+};
+
+stream.later = function(delay, value) {
+    var result = stream();
+
+    setTimeout(function() {
+        result.set(value);
+    }, delay);
+
+    return result;
+};
+
+// TODO bacon compatibility: new Bacon.EventStream(subscribe)
 
 // Given that the value of 'source' is set, which streams should we consider
 // updating and in which order?
@@ -252,6 +316,17 @@ function extend(target /*, sources ... */) {
 // on it and calls it if this stream has a value.  This should be used
 // by most stream operators that take a single parent stream, such as
 // map, filter, uniq, etc.
+//
+// 'update' is a function that receives the parents of the resulting stream
+// when one of them has changed.  It should call this.newValue(value) if it
+// wants to update the resulting stream.
+//
+// 'options' contains any properties that you want to set on the resulting
+// stream, such as 'f', 'state', or whatever you like.
+//
+// If you want to set the initial value of the resulting stream, you should
+// do that after you call derive().  Otherwise the initial update() call
+// will overwrite it.
 Stream.prototype.derive = function(update, options) {
     var result = stream();
 
@@ -284,6 +359,29 @@ stream.derivedStream = function(parents, update, options) {
     return result;
 };
 
+// 123 -> function() { return 123; }
+// 'x' -> function() { return 'x'; }
+// '.x' -> function(o) { (typeof o.x === 'function') ? o.x() : o.x; }
+//
+// I don't like this one bit
+
+function functionFromAnything(anything) {
+    if (typeof anything === 'function') {
+        return anything;
+    }
+
+    if (typeof anything === 'string' && anything[0] === '.') {
+        var prop = anything.slice(1);
+        return function(o) {
+            return typeof o[prop] === 'function' ? o[prop]() : o[prop];
+        };
+    }
+
+    return function() {
+        return anything;
+    }
+}
+
 // A stream whose value is updated with 'f(x)' whenever this
 // stream's value is updated with 'x'.
 //
@@ -292,12 +390,23 @@ stream.derivedStream = function(parents, update, options) {
 // s1: 1 1 2 2 5 6 6
 // s2: 2 2 3 3 6 7 7
 Stream.prototype.map = function(f) {
+    f = functionFromAnything(f);
+
     function mapUpdate(parent) {
         this.newValue(this.f(parent.value));
-    };
+    }
 
     return this.derive(mapUpdate, { f: f });
 };
+
+// TODO when errors come... what's this anyway?
+//Stream.prototype.mapError = function(f) {
+//
+//}
+
+// TODO Stream.prototype.errors
+// TODO Stream.prototype.skipErrors
+// TODO Stream.prototype.mapEnd (what's this? why?)
 
 // Return a stream whose value is updated with 'x' whenever this
 // stream's value is updated with 'x', if 'f(x)' is true.
@@ -363,6 +472,9 @@ Stream.prototype.onValue = function(f) {
 
     this.addListener(f);
 };
+
+// TODO Stream.prototype.onError(), Stream.prototype.onEnd()
+// Then implement errors and ends.
 
 Stream.prototype.addListener = function(f) {
     this.listeners.push(f);
@@ -482,17 +594,32 @@ Stream.prototype.flatMapLatest = function(f) {
     return this.derive(flatMapLatestUpdate);
 };
 
+function identityUpdate(parent) {
+    this.newValue(parent.value);
+}
+
 // Now what's the purpose of this, I don't know
 Stream.prototype.toProperty = function(initial) {
-    function toPropertyUpdate(parent) {
-        this.newValue(parent.value);
-    }
-
-    var result = this.derive(toPropertyUpdate);
+    var result = this.derive(identityUpdate);
     result.value = initial;
     return result;
 };
 
+// Just skip the initial value, if any.
+Stream.prototype.changes = function() {
+    var result = this.derive(identityUpdate);
+    result.value = undefined;
+    return result;
+};
+
+// Ha ha
+Stream.prototype.toEventStream = function() {
+    return this.derive(identityUpdate);
+};
+
+// TODO bacon compatibility: new Bacon.Bus()
+
 if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
     module.exports = stream;
 }
+
