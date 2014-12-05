@@ -36,26 +36,6 @@ stream.fromDomEvent = function(selector, eventType) {
     return result;
 };
 
-var defer = typeof setImmediate === 'function' ? setImmediate : setTimeout;
-
-// Produce a stream that yields the elements of array as fast as it can.
-stream.fromArray = function(array) {
-    var result = stream();
-
-    var index = 0;
-    function takeNext() {
-        if (index === array.length) {
-            return;
-        }
-        result.set(array[index++]);
-        defer(takeNext);
-    }
-
-    takeNext();
-
-    return result;
-};
-
 // Make a stream from a promise.
 // Does not handle errors right now (since they're not supported).
 stream.fromPromise = function(promise) {
@@ -87,6 +67,66 @@ stream.fromEventTarget = function(target, eventName, eventTransformer) {
     } else {
         target.on(eventName, eventListener);
     }
+
+    return result;
+};
+
+stream.fromCallback = function(f) {
+    assert(typeof f === 'function');
+    assert(arguments.length <= 1);
+
+    var result = stream();
+
+    f(function(value) {
+        result.set(value);
+    });
+
+    return result;
+};
+
+stream.fromNodeCallback = function(f) {
+    assert(typeof f === 'function');
+    assert(arguments.length <= 1);
+
+    var result = stream();
+    f(function(err, value) {
+        assert(!err);
+        result.set(value);
+    });
+
+    return result;
+};
+
+stream.fromPoll = function(interval, f) {
+    var result = stream();
+
+    setInterval(function() {
+        result.set(f());
+    });
+
+    return result;
+};
+
+stream.once = function(value) {
+    return stream(value);
+};
+
+var defer = typeof setImmediate === 'function' ? setImmediate : setTimeout;
+
+// Produce a stream that yields the elements of array as fast as it can.
+stream.fromArray = function(array) {
+    var result = stream();
+
+    var index = 0;
+    function takeNext() {
+        if (index === array.length) {
+            return;
+        }
+        result.set(array[index++]);
+        defer(takeNext);
+    }
+
+    takeNext();
 
     return result;
 };
