@@ -3,12 +3,12 @@ test('stream', function() {
         throw new Error('fail');
     }
 
-    var s = stream(1);
-    assert(s.value === 1);
+    var s = stream().set(1);
+    assert.eq(s.value, 1);
 });
 
 test('onValue', function() {
-    var s = stream(1);
+    var s = stream().set(1);
 
     var value;
 
@@ -52,7 +52,7 @@ test('flatMap TODO not real test', function() {
     var s = stream();
 
     var s2 = s.flatMap(function (n) {
-        var result = stream(n);
+        var result = stream().set(n);
         setTimeout(function () {
             result.set(n + 1);
         }, 1000);
@@ -69,10 +69,15 @@ test('flatMap TODO not real test', function() {
     s2.log('flatmapped');
 });
 
+test('once', function() {
+    var s = stream.once(123);
+    assert(s.value === 123);
+});
+
 function inc(x) { return x + 1; }
 
 test('glitch-freeness', function() {
-    var s = stream(10);
+    var s = stream().set(10);
 
     var t1 = s.map(inc);
     var t2 = s.map(inc);

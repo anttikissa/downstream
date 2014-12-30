@@ -1,16 +1,15 @@
 
 // Chapter 1 - Stream and stream
 
-function Stream(value) {
-    this.value = value;
+function Stream() {
     this.children = [];
     this.listeners = [];
     this.parents = [];
     this.version = stream.version;
 }
 
-function stream(value) {
-    return new Stream(value);
+function stream() {
+    return new Stream();
 }
 
 // Whenever stream.set() is called, this number is incremented.
@@ -109,7 +108,7 @@ stream.fromPoll = function(interval, f) {
 };
 
 stream.once = function(value) {
-    return stream(value);
+    return stream().set(value);
 };
 
 var defer = typeof setImmediate === 'function' ? setImmediate : setTimeout;
