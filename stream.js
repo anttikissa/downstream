@@ -1,4 +1,10 @@
 
+// General TODOs
+// Perhaps streamline creating derived streams
+// instead of having to specify parents (do all derived streams have parents?) give them/it as positional arguments
+// instead of having to specify update function (do all derived stream have update functions) give it as positional
+// argument
+
 // Chapter 0 - Internal utilities
 
 // Copy all attributes from 'sources' to 'target'.
@@ -20,6 +26,23 @@ function Stream(options) {
     this.parents = [];
     this.version = stream.version;
     extend(this, options);
+
+    if (options) {
+
+        // These here just to see how we can improve the API
+        if (options.update && !options.parents.length) {
+            // This one is likely to break whenever we get generators
+            throw new Error('Cannot have update function without parents');
+        }
+        if (options.parents.length && !options.update) {
+            // But this one probably won't
+            // Therefore, Stream(/* optional */ update, /* optional */ parent | parents)
+            // might be a valid API.
+            // (If parent/parents are defined, then so is update; otherwise, what
+            // would we call?)
+            throw new Error('Cannot have parents without update function');
+        }
+    }
 
     this.parents.forEach(function(parent) {
         parent.children.push(this);
