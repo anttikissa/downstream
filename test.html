@@ -4,38 +4,8 @@
 <script src='jquery-2.1.1.js'></script>
 <script src='reference/Bacon.js'></script>
 <script src='stream.js'></script>
-<!-- <script src='test-utils.js'></script> -->
-<!-- <script src='stream-test-browser.js'></script> -->
-<script>
-var s1 = new Bacon.Bus();
-var c = 97;
-setInterval(function() {
-	s1.push(String.fromCharCode(c++));
-}, 600);
-
-var s2 = new Bacon.Bus();
-var i = 1;
-setInterval(function() {
-	s2.push(i++);
-}, 400);
-
-//s1.log();
-//s2.log();
-
-function roundRobinPromiseMap(streams, f) {
-	return Bacon.zipAsArray.apply(null, streams)
-		.flatMap(Bacon.fromArray)
-		.flatMapConcat(f);
-}
-
-var mm = roundRobinPromiseMap([s1, s2], function(value) {
-	return Bacon.later(500, value);
-});
-
-mm.log();
-
-</script>
-
+<script src='test-utils.js'></script>
+<script src='stream-test-browser.js'></script>
 
 <button> hello
 </button>
