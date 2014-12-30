@@ -404,10 +404,10 @@ function functionFromAnything(anything) {
 Stream.prototype.map = function(f) {
     return stream({
         parents: [ this ],
-        f: functionFromAnything(f),
         update: function mapUpdate(parent) {
             this.newValue(this.f(parent.value));
-        }
+        },
+        f: functionFromAnything(f)
     });
 };
 
@@ -430,12 +430,12 @@ Stream.prototype.map = function(f) {
 Stream.prototype.filter = function(f) {
     return stream({
         parents: [ this ],
-        f: functionFromAnything(f),
         update: function filterUpdate(parent) {
             if (this.f(parent.value)) {
                 this.newValue(parent.value);
             }
-        }
+        },
+        f: functionFromAnything(f)
     });
 };
 
@@ -447,31 +447,35 @@ Stream.prototype.filter = function(f) {
 // s1: 1 1 2 2 5 6 6
 // s2: 1   2   5 6
 Stream.prototype.uniq = function() {
-    function uniqUpdate(parent) {
-        if (parent.value !== this.value) {
-            this.newValue(parent.value);
+    return stream({
+        parents: [ this ],
+        update: function uniqUpdate(parent) {
+            if (parent.value !== this.value) {
+                this.newValue(parent.value);
+            }
         }
-    }
-
-    return this.derive(uniqUpdate);
+    });
 };
 
 Stream.prototype.combine = function(other, f) {
-    function combineUpdate(parent1, parent2) {
-        this.newValue(this.f(parent1.value, parent2.value));
-    };
-
-    return stream.derivedStream([ this, other ], combineUpdate, { f: f });
+    return stream({
+        parents: [ this, other ],
+        update: function combineUpdate(parent1, parent2) {
+            this.newValue(this.f(parent1.value, parent2.value));
+        },
+        f: f
+    });
 };
 
 Stream.prototype.sampledBy = function(other) {
-    function sampledByUpdate(source, sampler) {
-        if (sampler.wasChanged()) {
-            this.newValue(source.value);
+    return stream({
+        parents: [ this, other ],
+        update: function sampledByUpdate(source, sampler) {
+            if (sampler.wasChanged()) {
+                this.newValue(source.value);
+            }
         }
-    }
-
-    return stream.derivedStream([ this, other ], sampledByUpdate);
+    });
 };
 
 // Like bacon's takeWhile(property), I assume; note that takeWhile
@@ -489,7 +493,10 @@ Stream.prototype.takeWhile = function(other) {
     }
 
     if (typeof other === 'function') {
-        return this.derive(takeWhileFunctionUpdate);
+        return stream({
+            parents: [ this ],
+            update: takeWhileFunctionUpdate
+        });
     }
 
     function takeWhileUpdate(source, sampler) {
@@ -498,13 +505,17 @@ Stream.prototype.takeWhile = function(other) {
         }
     }
 
-    return stream.derivedStream([ this, other ], takeWhileUpdate);
+    return stream({
+        parents: [ this, other ],
+        update: takeWhileUpdate
+    });
 }
 
 Stream.prototype.hasValue = function() {
     return typeof this.value !== 'undefined';
 };
 
+// TODO make this .forEach()
 Stream.prototype.onValue = function(f) {
     if (this.hasValue()) {
         f(this.value);
@@ -549,15 +560,27 @@ Stream.prototype.merge = function(other) {
         }
     }
 
-    return stream.derivedStream([ this, other ], mergeUpdate);
+    return stream({
+        parents: [ this, other ],
+        update: mergeUpdate
+    });
 };
 
+// TODO make this work on a stream that already has value
+// like bacon's property scan already does
+// TODO make this work without an initial value
+// TODO and the previous cases combined
+// like .reduce() would work, presumably.
+// Like in the previous stream library incarnation, if I recall correctly
 Stream.prototype.scan = function(initial, f) {
-    function scanUpdate(parent) {
-        this.newValue(this.f(this.value, parent.value));
-    }
-
-    return this.derive(scanUpdate, { value: initial, f: f });
+    return stream({
+        parents: [ this ],
+        update: function scanUpdate(parent) {
+            this.newValue(this.f(this.value, parent.value));
+        },
+        value: initial,
+        f: f
+    });
 };
 
 Stream.prototype.slidingWindow = function(n) {
