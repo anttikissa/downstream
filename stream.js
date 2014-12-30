@@ -1,15 +1,37 @@
 
+// Chapter 0 - Internal utilities
+
+// Copy all attributes from 'sources' to 'target'.
+function extend(target /*, sources ... */) {
+    for (var i = 1; i < arguments.length; i++) {
+        if (arguments[i]) {
+            for (var key in arguments[i]) {
+                target[key] = arguments[i][key];
+            }
+        }
+    }
+}
+
 // Chapter 1 - Stream and stream
 
-function Stream() {
+function Stream(options) {
     this.children = [];
     this.listeners = [];
     this.parents = [];
     this.version = stream.version;
+    extend(this, options);
+
+    this.parents.forEach(function(parent) {
+        parent.children.push(this);
+    }, this);
+
+    if (this.update && this.parents.some(function(parent) { return parent.hasValue(); })) {
+        this.update.apply(this, this.parents);
+    }
 }
 
-function stream() {
-    return new Stream();
+function stream(options) {
+    return new Stream(options);
 }
 
 // Whenever stream.set() is called, this number is incremented.
@@ -300,17 +322,6 @@ Stream.prototype.addChild = function(child) {
 
 // Chapter 3. Stream operators
 
-// Copy all attributes from 'sources' to 'target'.
-function extend(target /*, sources ... */) {
-    for (var i = 1; i < arguments.length; i++) {
-        if (arguments[i]) {
-            for (var key in arguments[i]) {
-                target[key] = arguments[i][key];
-            }
-        }
-    }
-}
-
 // Create a stream that depends on this stream, install an update handler
 // on it and calls it if this stream has a value.  This should be used
 // by most stream operators that take a single parent stream, such as
@@ -391,13 +402,13 @@ function functionFromAnything(anything) {
 // s1: 1 1 2 2 5 6 6
 // s2: 2 2 3 3 6 7 7
 Stream.prototype.map = function(f) {
-    f = functionFromAnything(f);
-
-    function mapUpdate(parent) {
-        this.newValue(this.f(parent.value));
-    }
-
-    return this.derive(mapUpdate, { f: f });
+    return stream({
+        parents: [ this ],
+        f: functionFromAnything(f),
+        update: function mapUpdate(parent) {
+            this.newValue(this.f(parent.value));
+        }
+    });
 };
 
 // TODO when errors come... what's this anyway?
@@ -417,15 +428,15 @@ Stream.prototype.map = function(f) {
 // s1: 1 1 2 2 5 6 6
 // s2: 1 1     5
 Stream.prototype.filter = function(f) {
-    f = functionFromAnything(f);
-
-    function filterUpdate(parent) {
-        if (this.f(parent.value)) {
-            this.newValue(parent.value);
+    return stream({
+        parents: [ this ],
+        f: functionFromAnything(f),
+        update: function filterUpdate(parent) {
+            if (this.f(parent.value)) {
+                this.newValue(parent.value);
+            }
         }
-    }
-
-    return this.derive(filterUpdate, { f: f });
+    });
 };
 
 // Return a stream that follows its parent's values, but only updates
