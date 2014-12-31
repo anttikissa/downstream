@@ -506,7 +506,7 @@ Stream.prototype.sampledBy = function(other) {
 Stream.prototype.takeWhile = function(other) {
 
     // TODO does not work really - actual takeWhile ends the stream
-    // one the other one produces false.
+    // once the other one produces false.
     function takeWhileFunctionUpdate(source) {
         // Umm... should other() be given 'source' as argument?
         // Should it be put through functionFromAnything?
@@ -616,7 +616,12 @@ Stream.prototype.slidingWindow = function(n) {
         this.newValue(newValue);
     }
 
-    return this.derive(slidingWindowUpdate, { value: [], n: n });
+    return stream({
+        parents: [ this ],
+        update: slidingWindowUpdate,
+        value: [],
+        n: n
+    });
 };
 
 Stream.prototype.slidingWindowBy = function(lengthStream) {
@@ -632,7 +637,11 @@ Stream.prototype.slidingWindowBy = function(lengthStream) {
         }
     }
 
-    return stream.derivedStream([ this, lengthStream ], slidingWindowByUpdate, { value: [] });
+    return stream({
+        parents: [ this ],
+        update: slidingWindowByUpdate,
+        value: []
+    });
 };
 
 Stream.prototype.take = function(n) {
@@ -643,7 +652,11 @@ Stream.prototype.take = function(n) {
         }
     }
 
-    return this.derive(takeUpdate, { n: n });
+    return stream({
+        parents: [ this ],
+        update: takeUpdate,
+        n: n
+    });
 };
 
 Stream.prototype.flatMap = function(f) {
@@ -659,7 +672,11 @@ Stream.prototype.flatMap = function(f) {
         }
     }
 
-    return this.derive(flatMapUpdate, { f: f });
+    return stream({
+        parents: [ this ],
+        update: flatMapUpdate,
+        f: f
+    });
 };
 
 Stream.prototype.flatMapLatest = function(f) {
@@ -677,7 +694,10 @@ Stream.prototype.flatMapLatest = function(f) {
         }
     }
 
-    return this.derive(flatMapLatestUpdate);
+    return stream({
+        parents: [ this ],
+        update: flatMapLatestUpdate
+    });
 };
 
 function identityUpdate(parent) {
@@ -686,21 +706,30 @@ function identityUpdate(parent) {
 
 // Now what's the purpose of this, I don't know
 Stream.prototype.toProperty = function(initial) {
-    var result = this.derive(identityUpdate);
-    result.value = initial;
-    return result;
+    return stream({
+        parents: [ this ],
+        update: identityUpdate
+    }).set(initial);
 };
 
 // Just skip the initial value, if any.
 Stream.prototype.changes = function() {
-    var result = this.derive(identityUpdate);
-    result.value = undefined;
-    return result;
+    return stream({
+        parents: [ this ],
+        update: identityUpdate
+    }).set(undefined);
 };
 
 // Ha ha
 Stream.prototype.toEventStream = function() {
-    return this.derive(identityUpdate);
+    return stream({
+        parents: [ this ],
+        update: identityUpdate
+    });
+    // Contrast the one above with this one. We can do better.
+    // return stream(this, identityUpdate)?
+    // return stream(identityUpdate, this)?
+//    return this.derive(identityUpdate);
 };
 
 // TODO bacon compatibility: new Bacon.Bus()
@@ -708,4 +737,3 @@ Stream.prototype.toEventStream = function() {
 if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
     module.exports = stream;
 }
-
