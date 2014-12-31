@@ -147,7 +147,7 @@ stream.fromPoll = function(interval, f) {
 
     setInterval(function() {
         result.set(f());
-    });
+    }, interval);
 
     return result;
 };
