@@ -451,6 +451,8 @@ Stream.prototype.map = function(f) {
 // s1: 1 1 2 2 5 6 6
 // s2: 1 1     5
 Stream.prototype.filter = function(f) {
+    // TODO filter(Stream s)
+    // filter while s.value is true
     return stream({
         parents: [ this ],
         update: function filterUpdate(parent) {
@@ -501,6 +503,9 @@ Stream.prototype.sampledBy = function(other) {
     });
 };
 
+// TODO this belongs with .take()
+// Do a transformation to it, similar to how filter() must do
+// when it's given a function. (change it to this.map(f))
 // Like bacon's takeWhile(property), I assume; note that takeWhile
 // does not produce new values if other's value (only) changes.
 Stream.prototype.takeWhile = function(other) {
@@ -532,7 +537,10 @@ Stream.prototype.takeWhile = function(other) {
         parents: [ this, other ],
         update: takeWhileUpdate
     });
-}
+};
+
+// TODO delay, throttle, debounce,
+// debounceImmediately?
 
 Stream.prototype.hasValue = function() {
     return typeof this.value !== 'undefined';
@@ -547,8 +555,31 @@ Stream.prototype.onValue = function(f) {
     this.addListener(f);
 };
 
-// TODO Stream.prototype.onError(), Stream.prototype.onEnd()
+// ending
+Stream.prototype.end = function() {
+    if (this.endListeners) {
+        this.endListeners.forEach(function(listener) {
+            listener();
+        });
+    }
+
+    // clean up?
+};
+
+Stream.prototype.addEndListener = function(f) {
+    if (this.endListeners === undefined) {
+        this.endListeners = [];
+    }
+    this.endListeners.push(f);
+};
+
+Stream.prototype.onEnd = function(f) {
+    this.addEndListener(f);
+};
+
+// TODO Stream.prototype.onError()
 // Then implement errors and ends.
+// How? Good question.
 
 Stream.prototype.addListener = function(f) {
     this.listeners.push(f);
@@ -657,6 +688,38 @@ Stream.prototype.take = function(n) {
         update: takeUpdate,
         n: n
     });
+};
+
+// TODO Stream.then that works like with promises
+// then(f) -> f should return a value (.map), or stream (.flatMap), or something that can be converted
+// into a stream (like a promise).
+
+// Stream.when(window.fetch('data.json'))
+//     .map(JSON.parse)
+//     .filter(".hasSomeProperty")
+//     .catch(function(err)) {
+//         // TODO could return a stream, or a like then handlers
+//     })
+
+// // Alternatively, you could have stream constructor like
+// stream(parent, /* optional */ update, /* ... */)
+// stream(window.fetch('data.json'))
+//     .then(function() ... )
+
+Stream.prototype.when = function(thenable) {
+    // Converts a thenable into a stream
+
+};
+
+Stream.prototype.then = function(f) {
+
+};
+
+Stream.prototype.catch = function(f) {
+    // when an error comes, changes that into a value
+    // / does a side effect, and maybe saves the day
+    // (can that be done? can .onError() handlers stop the error
+    // from happening?)
 };
 
 Stream.prototype.flatMap = function(f) {
