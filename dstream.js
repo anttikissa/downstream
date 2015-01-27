@@ -1033,8 +1033,6 @@ Stream.prototype.toEventStream = function() {
 //    return this.derive(identityUpdate);
 };
 
-// TODO bacon compatibility: new Bacon.Bus()
-
 if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
     module.exports = stream;
 }
