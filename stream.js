@@ -1,10 +1,3 @@
-
-// General TODOs
-// Perhaps streamline creating derived streams
-// instead of having to specify parents (do all derived streams have parents?) give them/it as positional arguments
-// instead of having to specify update function (do all derived stream have update functions) give it as positional
-// argument
-
 // Chapter 0 - Internal utilities
 
 // Copy all attributes from 'sources' to 'target'.
@@ -18,50 +11,383 @@ function extend(target /*, sources ... */) {
     }
 }
 
-// Chapter 1 - Stream and stream
+function isArray(object) {
+    // TODO compatibility
+	return Array.isArray(object);
+}
 
-function Stream(options) {
+function isStream(object) {
+    return object instanceof Stream;
+}
+
+// Testing utils (in test environment, these exist and do what they say)
+if (typeof test !== 'function') {
+    var test = function() {};
+}
+
+if (typeof assert !== 'function') {
+    var assert = function() {};
+    assert.eq = function() {};
+}
+
+// Update function for identity stream (copy parent's value)
+function copyUpdate(parent) {
+    this.newValue(parent.value);
+}
+
+
+// Chapter 1 - Stream() and stream()
+
+// Stream constructor.
+//
+//     new Stream()
+//
+// Create a source stream.  A source stream has no value nor parents nor
+// children (yet).  You can set its value with .set(value).
+//
+//     new Stream(
+//         Stream parent | Stream[] parents,
+//         optional Function update,
+//         optional Object options)
+//
+// Create a derived stream.  The derived streams gets its value via an update
+// function, which is called with the stream's parents as arguments and the
+// stream itself as 'this'.  The update function may call this.newValue() to
+// update the stream's value.
+//
+// If no update function is specified, copyUpdate is used, which just copies
+// the first parent's value to the stream.
+//
+// If the options object is specified, the stream is extended with its
+// properties.
+function Stream(parentOrParents, update, options) {
     this.children = [];
     this.listeners = [];
-    this.parents = [];
+    parentOrParents = parentOrParents || [];
+    this.parents = isArray(parentOrParents)
+        ? (parentOrParents)
+        : [ parentOrParents ];
+    this.update = update || copyUpdate;
     this.version = stream.version;
+
     extend(this, options);
-
-    if (options) {
-
-        // These here just to see how we can improve the API
-        if (options.update && !options.parents.length) {
-            // This one is likely to break whenever we get generators
-            throw new Error('Cannot have update function without parents');
-        }
-        if (options.parents.length && !options.update) {
-            // But this one probably won't
-            // Therefore, Stream(/* optional */ update, /* optional */ parent | parents)
-            // might be a valid API.
-            // (If parent/parents are defined, then so is update; otherwise, what
-            // would we call?)
-            throw new Error('Cannot have parents without update function');
-        }
-    }
 
     this.parents.forEach(function(parent) {
         parent.children.push(this);
     }, this);
 
-    if (this.update && this.parents.some(function(parent) { return parent.hasValue(); })) {
+    function hasValue(s) {
+        return s.hasValue();
+    }
+
+    if (this.update && this.parents.some(hasValue)) {
         this.update.apply(this, this.parents);
     }
 }
 
-function stream(options) {
-    return new Stream(options);
+// A shorthand for new Stream(...).
+//
+// Also, acts as a namespace for exported methods that don't logically
+// belong into Stream.prototype.
+function stream(parentOrParents, update, options) {
+    return new Stream(parentOrParents, update, options);
 }
 
+test('stream()', function() {
+    var s = stream();
+    assert(s.value === undefined);
+    assert.eq(s.parents, []);
+    assert.eq(s.children, []);
+
+    s.set(123);
+    assert.eq(s.value, 123)
+});
+
+test('stream(parent)', function() {
+    var s = stream();
+    s.set(123);
+    var s2 = stream(s);
+    assert.eq(s2.value, s.value);
+});
+
+test('stream(parent, update)', function() {
+    var s = stream();
+
+    // Also a partial test for stream.set(); no worries
+    var s2 = stream(s, function(parent) { this.newValue(parent.value * 2) });
+
+    s.set(123);
+    assert.eq(s2.value, 246);
+});
+
+test('stream(parents, update)', function() {
+    var s = stream();
+    var s2 = stream();
+
+    var timesParentUpdated = 0;
+    function update() { timesParentUpdated++; }
+
+    stream([ s, s2 ], update);
+    s.set(1);
+    assert.eq(timesParentUpdated, 1);
+    s2.set(1);
+    assert.eq(timesParentUpdated, 2);
+});
+
+test('stream(parent, update, options)', function() {
+    var s = stream();
+
+    var s2 = stream(s, function foo() {}, {
+        state: 0, f: function(x) { return x * 2 }
+    });
+
+    assert.eq(s2.update.name, 'foo');
+    assert.eq(s2.state, 0);
+    assert.eq(s2.f(10), 20);
+});
+
 // Whenever stream.set() is called, this number is incremented.
-// All streams whose value is set through .newValue() have their .version assigned to this,
-// so we can know which streams received a new value during the current tick.
-// (Stream.wasChanged() tells if a stream was.)
+// All streams whose value is set through .newValue() have their .version
+// assigned to this, so we can call s.wasChanged() to tell if a s received
+// a new value during the most recent tick.
 stream.version = 0;
+
+
+// Chapter 2 - Mostly bookkeeping and accessors
+
+Stream.prototype.hasValue = function() {
+    return typeof this.value !== 'undefined';
+};
+
+test('hasValue()', function() {
+    test('before setting a value');
+    var s = stream();
+    assert(s.hasValue() === false);
+
+    test('after setting a value');
+    s.set(1);
+    assert(s.hasValue() === true);
+});
+
+// Call f(value) for every value that the stream has.
+//
+// If a stream has a value when forEach() is called, f will be called right
+// away with the current value.  After the stream has ended, f will no longer
+// be called.
+//
+// Returns the stream itself.
+Stream.prototype.forEach = function(f) {
+    if (this.hasValue()) {
+        f(this.value);
+    }
+
+    this.addListener(f);
+
+    return this;
+};
+
+test('forEach()', function() {
+    var s = stream();
+    var result = [];
+
+    s.forEach(result.push.bind(result));
+
+    test('listener not called if stream had no value when calling forEach');
+    assert.eq(result, []);
+
+    test('listener is called if stream had a value when calling forEach');
+    var s2 = stream().set(1);
+    var forEachResult = s2.forEach(result.push.bind(result));
+    assert.eq(result, [ 1 ]);
+
+    test('forEach returns the stream itself');
+    assert(forEachResult === s2);
+
+    result.length = 0;
+
+    test('listener is called when .set() is called on the stream');
+    s.set(2);
+    assert.eq(result, [ 2 ]);
+});
+
+// Called internally by forEach().
+Stream.prototype.addListener = function(f) {
+    this.listeners.push(f);
+};
+
+// Remove a listener added by forEach().
+// You can add the same listener many times, and you must call removeListener()
+// as many times as you called forEach() in order to remove all listeners.
+// Calling removeListener() with a function that is not a listener of the
+// stream has no effect.
+Stream.prototype.removeListener = function(f) {
+    var idx = this.listeners.indexOf(f);
+    if (idx !== -1) {
+        this.listeners.splice(idx, 1);
+    }
+};
+
+test('addListener() and removeListener()', function() {
+    var s = stream();
+    function f() {}
+    function f2() {}
+    test('listeners can be added many times');
+    s.addListener(f);
+    s.addListener(f);
+    assert(s.listeners.length === 2);
+    s.addListener(f2);
+    s.addListener(f);
+
+    assert(s.listeners.length === 4);
+
+    test('removeListener(f) can be called as many times as addListener(f)');
+    s.removeListener(f);
+    assert(s.listeners.length === 3);
+    s.removeListener(f);
+    assert(s.listeners.length === 2);
+    s.removeListener(f);
+    assert(s.listeners.length === 1);
+    test('removeListener(f) has no effect is f was not added as a listener');
+    s.removeListener(f);
+    assert(s.listeners.length === 1);
+});
+
+// Call f() when the stream ends.
+//
+// If the stream has ended when then() is called, f will be called right away.
+// f will always be called at most once.
+// TODO make streams chainable like promises
+// TODO wasteful if the result is not used?
+Stream.prototype.then = function(f) {
+
+    if (this.ended) {
+        f(this.value);
+
+        // TODO promise-style behavior where a stream returned by f()
+        // gets followed instead, and if it yields a stream, then it's
+        // followed, etc.
+        // An idea (might work):
+        // stream.flatten(Stream s | Object value)?
+        // Return a stream that gives 'value' or the result of flattening
+        // s's end value.
+    }
+
+    this.addEndListener(f);
+};
+
+test('then()', function() {
+    var s = stream();
+    var ended = 0;
+    s.then(function() {
+        ended++;
+    });
+    test('listener not called if stream had not ended when calling .then');
+    assert(ended === 0);
+
+    var s2 = stream();
+    s2.end();
+    s2.then(function() {
+        ended++;
+    });
+    test('listener is called if stream had ended when calling .then');
+    assert(ended === 1);
+    ended = 0;
+
+    s.end();
+    test('listener is called when .end() is called on stream');
+    assert(ended === 1);
+});
+
+// Called internally by then().
+// The list of end listeners is initialized lazily, as end listeners are not
+// expected to be as common as value listeners.
+Stream.prototype.addEndListener = function(f) {
+    if (!this.endListeners) {
+        this.endListeners = [];
+    }
+    this.endListeners.push(f);
+};
+
+
+// Stream.end(optional value)
+//
+// End a stream, optionally giving it a value first.
+//
+// TODO can only source streams be .end()ed?
+// Can ended streams drop their children without telling them?
+// Would that be of any use?
+Stream.prototype.end = function(value) {
+    if (arguments.length) {
+        this.set(value);
+    }
+    (this.endListeners || []).forEach(function(f) {
+        f(this.value);
+    }, this);
+
+    this.ended = true;
+
+    // Clear the listeners list
+    stream.listeners = [];
+};
+
+// Called internally by catch().
+// The list of error listeners is initialized lazily, as error listeners are
+// not expected to be as common as value listeners.
+Stream.prototype.addErrorListener = function(f) {
+    if (!this.errorListeners) {
+        this.errorListeners = [];
+    }
+    this.errorListeners.push(f);
+};
+
+// Stream.error(Function f)
+//
+// Call f(error) if a stream throws an error.
+//
+// If the stream already has an error, f is called immediately with it.
+Stream.prototype.catch = function(f) {
+    if (this.error) {
+        f(this.error);
+    }
+    this.addErrorListener(f);
+};
+
+test('catch()', function() {
+    var s = stream();
+    s.throw(new Error('hello'));
+
+    var caught = 0;
+    s.catch(function() {
+        caught++;
+    });
+
+    assert.eq(caught, 1);
+});
+
+Stream.prototype.throw = function(error) {
+    if (this.error) {
+        throw new Error('throw([Error: ' + error.message + ']): cannot throw ' +
+        'twice (old error: [Error: ' + this.error.message + ']');
+    }
+
+    this.error = error;
+
+    (this.errorListeners || []).forEach(function(f) {
+        // TODO
+        f(error);
+    });
+
+    // A potential implementation:
+    // let the error propagate to all of this stream's descendants
+    // (in topological order)
+    // any handler can stop the error propagation (by returning something?)
+    // (or maybe not)
+    // By default, the streams are left into 'failed' state (== .error set)
+    // (Maybe?) uncaught exceptions will be thrown at the end
+    // to allow then() chains as with promises
+    // (Should we prevent .set() for streams that have an error?)
+};
+
 
 // Chapter 2 - Stream utilities.
 // Functions that create new streams or help creating them.
@@ -82,36 +408,14 @@ stream.fromDomEvent = function(selector, eventType) {
 };
 
 // Make a stream from a promise.
-// Does not handle errors right now (since they're not supported).
 stream.fromPromise = function(promise) {
     var result = stream();
 
     promise.then(function(value) {
         result.set(value);
+    }).fail(function(error) {
+        result.throw(error);
     });
-
-    return result;
-};
-
-stream.fromEventTarget = function(target, eventName, eventTransformer) {
-    if (eventTransformer) {
-        return stream.fromEventTarget(target, eventName).map(eventTransformer);
-    }
-
-    var result = stream();
-
-    function eventListener(event) {
-        result.set(event);
-    }
-
-    // Replicates Bacon.js behavior.
-    if (target.addEventListener) {
-        target.addEventListener(eventName, eventListener);
-    } else if (target.bind) {
-        target.bind(eventName, eventListener);
-    } else {
-        target.on(eventName, eventListener);
-    }
 
     return result;
 };
@@ -142,6 +446,7 @@ stream.fromNodeCallback = function(f) {
     return result;
 };
 
+// TODO replace with .sample()
 stream.fromPoll = function(interval, f) {
     var result = stream();
 
@@ -150,10 +455,6 @@ stream.fromPoll = function(interval, f) {
     }, interval);
 
     return result;
-};
-
-stream.once = function(value) {
-    return stream().set(value);
 };
 
 var defer = typeof setImmediate === 'function' ? setImmediate : setTimeout;
@@ -165,6 +466,7 @@ stream.fromArray = function(array) {
     var index = 0;
     function takeNext() {
         if (index === array.length) {
+            result.end();
             return;
         }
         result.set(array[index++]);
@@ -542,55 +844,6 @@ Stream.prototype.takeWhile = function(other) {
 // TODO delay, throttle, debounce,
 // debounceImmediately?
 
-Stream.prototype.hasValue = function() {
-    return typeof this.value !== 'undefined';
-};
-
-// TODO make this .forEach()
-Stream.prototype.onValue = function(f) {
-    if (this.hasValue()) {
-        f(this.value);
-    }
-
-    this.addListener(f);
-};
-
-// ending
-Stream.prototype.end = function() {
-    if (this.endListeners) {
-        this.endListeners.forEach(function(listener) {
-            listener();
-        });
-    }
-
-    // clean up?
-};
-
-Stream.prototype.addEndListener = function(f) {
-    if (this.endListeners === undefined) {
-        this.endListeners = [];
-    }
-    this.endListeners.push(f);
-};
-
-Stream.prototype.onEnd = function(f) {
-    this.addEndListener(f);
-};
-
-// TODO Stream.prototype.onError()
-// Then implement errors and ends.
-// How? Good question.
-
-Stream.prototype.addListener = function(f) {
-    this.listeners.push(f);
-};
-
-Stream.prototype.removeListener = function(f) {
-    var idx = this.listeners.indexOf(f);
-    if (idx !== -1) {
-        this.listeners.splice(idx, 1);
-    }
-};
 
 Stream.prototype.log = function(prefix) {
     this.onValue(function(value) {
@@ -690,10 +943,6 @@ Stream.prototype.take = function(n) {
     });
 };
 
-// TODO Stream.then that works like with promises
-// then(f) -> f should return a value (.map), or stream (.flatMap), or something that can be converted
-// into a stream (like a promise).
-
 // Stream.when(window.fetch('data.json'))
 //     .map(JSON.parse)
 //     .filter(".hasSomeProperty")
@@ -709,17 +958,6 @@ Stream.prototype.take = function(n) {
 Stream.prototype.when = function(thenable) {
     // Converts a thenable into a stream
 
-};
-
-Stream.prototype.then = function(f) {
-
-};
-
-Stream.prototype.catch = function(f) {
-    // when an error comes, changes that into a value
-    // / does a side effect, and maybe saves the day
-    // (can that be done? can .onError() handlers stop the error
-    // from happening?)
 };
 
 Stream.prototype.flatMap = function(f) {

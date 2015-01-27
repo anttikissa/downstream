@@ -8,15 +8,32 @@ function assert(what) {
     }
 }
 
+function defer(f) {
+    setTimeout(f, 1);
+}
+
+// Allows tests with the syntax
+// test('description of test', function() { /* code to be run */ });
+// and also 'markers' that simply print out what part of the test is being
+// run next:
+// test('something()', function() {
+//   test('something() with no args');
+//   something();
+//   ... assert something
+//   test('something() with odd numbers');
+//   something(1);
+//   something(3);
+//   something(7);
+// });
 function test(what, f) {
-    if (!f) {
-        f = what;
-        what = f.name;
+    if (f) {
+        defer(function() {
+            log(what);
+            f();
+        });
+    } else {
+        log('  ' + what);
     }
-    if (what) {
-        log('Testing', what);
-    }
-    f();
 }
 
 // Assertion check for deep equality.
