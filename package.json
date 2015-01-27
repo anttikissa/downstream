@@ -1,0 +1,19 @@
+{
+  "name": "dstream",
+  "version": "0.0.1",
+  "description": "Downstream",
+  "main": "dstream.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "./test/run"
+  },
+  "keywords": [
+    "downstream",
+    "stream",
+    "reactive",
+    "frp"
+  ],
+  "license": "ISC"
+}
