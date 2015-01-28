@@ -12,12 +12,7 @@ function extend(target /*, sources ... */) {
 }
 
 function isArray(object) {
-    // TODO compatibility
 	return Array.isArray(object);
-}
-
-function isStream(object) {
-    return object instanceof Stream;
 }
 
 // Testing utils (in test environment, these exist and do what they say)
@@ -35,6 +30,8 @@ function copyUpdate(parent) {
     this.newValue(parent.value);
 }
 
+// defer(f) - call 'f' a bit later
+var defer = typeof setImmediate === 'function' ? setImmediate : setTimeout;
 
 // Chapter 1 - Stream() and stream()
 
@@ -273,6 +270,8 @@ Stream.prototype.then = function(f) {
     }
 
     this.addEndListener(f);
+
+    // return something?
 };
 
 test('then()', function() {
@@ -389,7 +388,8 @@ Stream.prototype.throw = function(error) {
 };
 
 
-// Chapter 2 - Stream utilities.
+// Chapter X - Stream utilities
+//
 // Functions that create new streams or help creating them.
 
 // Produce a stream that yields values whenever event 'eventType' is fired for
@@ -408,6 +408,8 @@ stream.fromDomEvent = function(selector, eventType) {
 };
 
 // Make a stream from a promise.
+// TODO should probably be either stream(promise) or stream.from(promise)
+// Maybe the former -- streams and promises should be interchangeable
 stream.fromPromise = function(promise) {
     var result = stream();
 
@@ -419,45 +421,6 @@ stream.fromPromise = function(promise) {
 
     return result;
 };
-
-stream.fromCallback = function(f) {
-    assert(typeof f === 'function');
-    assert(arguments.length <= 1);
-
-    var result = stream();
-
-    f(function(value) {
-        result.set(value);
-    });
-
-    return result;
-};
-
-stream.fromNodeCallback = function(f) {
-    assert(typeof f === 'function');
-    assert(arguments.length <= 1);
-
-    var result = stream();
-    f(function(err, value) {
-        assert(!err);
-        result.set(value);
-    });
-
-    return result;
-};
-
-// TODO replace with .sample()
-stream.fromPoll = function(interval, f) {
-    var result = stream();
-
-    setInterval(function() {
-        result.set(f());
-    }, interval);
-
-    return result;
-};
-
-var defer = typeof setImmediate === 'function' ? setImmediate : setTimeout;
 
 // Produce a stream that yields the elements of array as fast as it can.
 stream.fromArray = function(array) {
@@ -478,18 +441,7 @@ stream.fromArray = function(array) {
     return result;
 };
 
-stream.fromBinder = function(f) {
-    var result = stream();
-
-    function sink(value) {
-        result.set(value);
-    }
-
-    f(sink);
-
-    return result;
-};
-
+// TODO decide the fate of these
 stream.interval = function(interval, value) {
     return stream.repeatedly(interval, [value]);
 };
@@ -525,10 +477,6 @@ stream.repeatedly = function(interval, values) {
     return result;
 };
 
-stream.never = function() {
-    return stream();
-};
-
 stream.later = function(delay, value) {
     var result = stream();
 
@@ -539,13 +487,15 @@ stream.later = function(delay, value) {
     return result;
 };
 
-// TODO bacon compatibility: new Bacon.EventStream(subscribe)
+// Chapter 4 - Stream.set() and its internal mechanisms
 
+// stream.updateOrder(Stream source) -> Stream[]
+//
 // Given that the value of 'source' is set, which streams should we consider
 // updating and in which order?
 //
-// I.e. a topological ordering of streams reachable from 'source' through parent-child
-// relationships.
+// Returns a topological ordering of streams reachable from 'source' through
+// parent-child relationships.
 //
 // var s = stream();
 // var s2 = s.map(inc);
@@ -569,7 +519,7 @@ stream.updateOrder = function(source) {
     //
     // dfsTraversalOrder = [ 1, 2, 4, 3, 4 ]
     //
-    // from which we will pick the last occurrence of each node:
+    // from which we will pick only the last occurrence of each node:
     //
     // result = [ 1, 2,    3, 4 ]
     function isLastIndexOf(node, idx) {
@@ -591,7 +541,7 @@ stream.updateOrder = function(source) {
 // Transitively update all streams that depend on this.
 // After a stream's value has been updated, call its listeners with the new value.
 //
-// Return 'this' so you can do s.set(1).set(2)... or whatever.
+// Return 'this' so you can do things like s.set(1).forEach(f).
 Stream.prototype.set = function(value) {
     stream.version++;
 
@@ -645,10 +595,10 @@ Stream.prototype.addChild = function(child) {
     this.children.push(child);
 };
 
-// Chapter 3. Stream operators
+// Chapter 3 - Stream operators
 
 // Create a stream that depends on this stream, install an update handler
-// on it and calls it if this stream has a value.  This should be used
+// on it and call it if this stream has a value.  This should be used
 // by most stream operators that take a single parent stream, such as
 // map, filter, uniq, etc.
 //
@@ -844,9 +794,21 @@ Stream.prototype.takeWhile = function(other) {
 // TODO delay, throttle, debounce,
 // debounceImmediately?
 
-
+// Stream.log(optional String prefix) -> Stream
+//
+// For each value given by the stream, print it out using console.log,
+// with 'prefix' as the first argument if provided.
+//
+// Return the stream itself for chainability.
+//
+//     stream.set(1).log().set(2);
+//     // -> 1; 2
+//
+//     stream.set(1).log('value');
+//     // -> value 1
+//
 Stream.prototype.log = function(prefix) {
-    this.onValue(function(value) {
+    this.forEach(function(value) {
         if (prefix) {
             console.log(prefix, value);
         } else {
@@ -856,7 +818,20 @@ Stream.prototype.log = function(prefix) {
     return this;
 };
 
-Stream.prototype.merge = function(other) {
+// Chapter X - stream combinators
+
+// stream.merge(Stream s1, Stream s2) -> Stream - merge 's1' and 's2'
+//
+//     var result = stream.merge(s1, s2)
+//     s1     1   2   5   6
+//     s2       1   2   6
+//     result 1 1 2 2 5 6 6
+//
+// If any of the argument streams change their value simultaneously,
+// the last one takes effect.
+//
+// TODO generalize
+stream.merge = function(s1, s2) {
     function mergeUpdate(parent1, parent2) {
         if (parent1.wasChanged()) {
             this.newValue(parent1.value);
@@ -867,27 +842,24 @@ Stream.prototype.merge = function(other) {
         }
     }
 
-    return stream({
-        parents: [ this, other ],
-        update: mergeUpdate
-    });
+    return stream([ s1, s2 ], mergeUpdate);
 };
 
-// TODO make this work on a stream that already has value
-// like bacon's property scan already does
-// TODO make this work without an initial value
-// TODO and the previous cases combined
-// like .reduce() would work, presumably.
-// Like in the previous stream library incarnation, if I recall correctly
-Stream.prototype.scan = function(initial, f) {
-    return stream({
-        parents: [ this ],
-        update: function scanUpdate(parent) {
+// Stream.reduce(Function f, optional Object initial) -> Stream
+//
+// Reduce a stream. Like Array.reduce(), except that the resulting stream
+// also shows the intermediate values of the process.
+//
+Stream.prototype.reduce = function(f, initial) {
+    function reduceUpdate(parent) {
+        if (this.hasValue()) {
             this.newValue(this.f(this.value, parent.value));
-        },
-        value: initial,
-        f: f
-    });
+        } else {
+            this.newValue(parent.value);
+        }
+    }
+
+    return stream(this, reduceUpdate, { value: initial, f: f });
 };
 
 Stream.prototype.slidingWindow = function(n) {
