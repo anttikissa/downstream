@@ -24,5 +24,8 @@
   "bugs": {
     "url": "https://github.com/anttisykari/dstream/issues"
   },
-  "homepage": "https://github.com/anttisykari/dstream"
+  "homepage": "https://github.com/anttisykari/dstream",
+  "devDependencies": {
+    "bower": "^1.3.12"
+  }
 }
