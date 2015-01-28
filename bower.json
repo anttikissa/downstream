@@ -1,0 +1,28 @@
+{
+  "name": "downstream",
+  "main": "dstream.js",
+  "version": "0.0.2",
+  "homepage": "https://github.com/anttisykari/downstream",
+  "description": "Downstream",
+  "moduleType": [
+    "globals"
+  ],
+  "keywords": [
+    "downstream",
+    "stream",
+    "reactive",
+    "frp"
+  ],
+  "authors": [
+    "Antti Sykäri <antti.sykari@gmail.com>"
+  ],
+  "license": "ISC",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "reference",
+    "test",
+    "tests"
+  ]
+}
