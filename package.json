@@ -2,7 +2,7 @@
   "name": "dstream",
   "version": "0.0.2",
   "description": "Downstream",
-  "main": "dstream.js",
+  "main": "downstream.js",
   "directories": {
     "test": "test"
   },

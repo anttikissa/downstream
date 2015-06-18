@@ -1,6 +1,6 @@
 {
   "name": "downstream",
-  "main": "dstream.js",
+  "main": "downstream.js",
   "version": "0.0.2",
   "homepage": "https://github.com/anttisykari/downstream",
   "description": "Downstream",
