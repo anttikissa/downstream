@@ -1,0 +1,15 @@
+#!/bin/bash
+
+function build() {
+	echo Concatenating src/*.js into downstream.js
+	cat src/*.js > downstream.js
+	ls -l downstream.js
+}
+
+build
+
+while util/watch src/*.js
+do
+	build
+done
+

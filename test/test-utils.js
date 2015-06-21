@@ -25,22 +25,53 @@ function defer(f) {
 //   something(3);
 //   something(7);
 // });
+var depth = 0;
+
 function test(what, f) {
+    log(Array(depth + 1).join('| ') + what);
+    depth++;
     if (f) {
-        defer(function() {
-            log(what);
-            f();
-        });
-    } else {
-        log('  ' + what);
+        f();
     }
+    depth--;
 }
+
+function isNaNReally(value) {
+    return typeof value === 'number' && isNaN(value);
+}
+
+// A (slightly) better JSON.stringify for accurate error reportage.
+function describe(value) {
+    if (isNaNReally(value)) {
+        return "NaN";
+    }
+    return JSON.stringify(value);
+}
+
+// Print out relevant information about the error.
+function report(error) {
+    console.error(error.message);
+    console.error(error.stack.split('\n').slice(2, 5).join('\n'));
+    // fail fast; uncomment to run all tests
+    throw error;
+}
+
+// Assertion check for equality.
+assert.is = function(x, y) {
+    if (x !== y) {
+        report(new Error('Got ' + describe(x) + ', expected ' + describe(y)));
+    }
+};
 
 // Assertion check for deep equality.
 assert.eq = function(x, y) {
-    if (JSON.stringify(x) !== JSON.stringify(y)) {
-        throw new Error('Got ' + JSON.stringify(x) + ', expected ' + JSON.stringify(y));
+    if (describe(x) !== describe(y)) {
+        report(new Error('Got ' + describe(x) + ', expected ' + describe(y)));
     }
+};
+
+assert.fail = function() {
+    report(new Error('Should not be here'));
 };
 
 // Helper to check that stream eventually gets values of 'values' in that order.
