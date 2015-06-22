@@ -7,6 +7,10 @@ test('4-stream-operators-test.js', function() {
         return x + y;
     }
 
+    function plusThree(x, y, z) {
+        return x + y + z;
+    }
+
     function isOdd(x) {
         return x % 2 !== 0;
     }
@@ -81,5 +85,38 @@ test('4-stream-operators-test.js', function() {
         assert.is(lettersResult, 'HELLOWORLD');
         assert.is(consonantsResult, 'HLLWRLD');
         assert.is(uniquesResult, 'HLWRLD');
+    });
+
+    test('stream.combine() with two sources', function() {
+        var odds = stream().set(1);
+        var evens = stream().set(2);
+
+        var sums = stream.combine(plus, odds, evens);
+        assert.is(sums.value, 3);
+    });
+
+    test('stream.combine(), combining mapped streams', function() {
+        var source = stream();
+
+        source.set(1);
+
+        var s1 = source.map(function(x) { return x * 10; });
+        var s2 = source.map(function(x) { return x * 100; });
+
+        var s3 = stream.combine(function(x, y) { return x + y; }, s1, s2);
+
+        assert.is(s3.value, 110);
+
+        var values = [];
+        s3.forEach(function(value) {
+            values.push(value);
+        });
+
+        assert.eq(values, [110]);
+
+        source.set(2);
+
+        assert.is(s3.value, 220);
+        assert.eq(values, [110, 220]);
     });
 });

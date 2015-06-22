@@ -25,6 +25,9 @@ function Stream(parentOrParents, options) {
     this.version = 0;
 
     this.parents.forEach(function(parent) {
+        if (!(parent instanceof Stream)) {
+            throw new Error('parent ' + parent + ' is not a Stream');
+        }
         parent.addChild(this);
     }, this);
 

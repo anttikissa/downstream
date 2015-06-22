@@ -47,6 +47,9 @@ function Stream(parentOrParents, options) {
     this.version = 0;
 
     this.parents.forEach(function(parent) {
+        if (!(parent instanceof Stream)) {
+            throw new Error('parent ' + parent + ' is not a Stream');
+        }
         parent.addChild(this);
     }, this);
 
@@ -343,7 +346,7 @@ Stream.prototype.filter = function(f) {
 // The equality check used is `===`, so you might not get the expected result if
 // your stream gives `NaN` values (because `NaN !== NaN`).
 //
-// var s2 = s1.uniq()
+// var s2 = s1.uniq();
 //
 // s1: 1 1 2 2 5 6 6
 // s2: 1   2   5 6
@@ -355,4 +358,39 @@ Stream.prototype.uniq = function() {
     }
 
     return stream(this, { update: uniqUpdate });
+};
+
+// stream.combine(Function f, ...Stream streams) -> Stream
+//
+// Create a stream that represents the value of one or more source streams
+// combined by `f`. The resulting stream updates when any of the source streams
+// updates.
+//
+// var s4 = stream.combine(add, s1, s2, s3);
+//
+// s1: 1     0
+// s2: 2 4 3   8
+// s3: 3       1
+// s4: 6 8 7 6 9
+stream.combine = function(f) {
+    if (typeof f !== 'function') {
+        throw new Error('f (' + f + ') is not a function');
+    }
+    var sourceStreams = Array(arguments.length - 1);
+    for (var i = 1, length = arguments.length; i < length; i++) {
+        sourceStreams[i - 1] = arguments[i];
+    }
+
+    function combineUpdate() {
+        var parentValues = this.parents.map(function(parent) {
+            return parent.value;
+        });
+
+        this.newValue(this.f.apply(this, parentValues));
+    }
+
+    return stream(sourceStreams, {
+        update: combineUpdate,
+        f: f
+    });
 };

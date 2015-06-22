@@ -2,7 +2,7 @@
 
 function build() {
 	echo Concatenating src/*.js into downstream.js
-	cat src/*.js > downstream.js
+	cat src/?-*.js > downstream.js
 	ls -l downstream.js
 }
 
