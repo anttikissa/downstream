@@ -45,6 +45,8 @@ Stream.prototype.newValue = function(value) {
 //
 // Return `this` so you can do things like `s.set(1).forEach(f)`.
 Stream.prototype.set = function(value) {
+    assertActive(this);
+    
     stream.version++;
 
     // Start by updating my value.
@@ -128,4 +130,45 @@ stream.updateOrder = function(source) {
     });
 
     return result;
+};
+
+// Stream::end()
+//
+// Declares that this stream has done its business, and that its final value is
+// `this.value`.
+//
+// `Stream::end()` is to `Stream::then` and `Stream::done` what
+// `Stream::set()` is to `Stream::forEach`.
+//
+// Ending a stream consists of three steps:
+//
+// - Set my state to `ended`
+// - Inform end listeners that this stream has ended
+// - Inform children that this stream has ended
+//
+// After children and listeners have been informed, this stream doesn't need a
+// reference to them any more, so delete those links.
+//
+// If you want to end a stream with a value, call `this.set(finalValue)` first.
+Stream.prototype.end = function() {
+    // TODO make sure this is necessary
+    assertActive(this);
+
+    this.state = 'ended';
+
+    if (this.endListeners) {
+        this.endListeners.forEach(function(listener) {
+            listener(this.value);
+        }, this);
+    }
+
+    this.listeners = [];
+
+    this.children.forEach(function(child) {
+        // Maybe child.parentHasEnded(this)
+        // so they can override the ending behavior
+        child.end();
+    });
+
+    this.children = [];
 };

@@ -14,14 +14,9 @@ test('1-stream-test.js', function() {
         child.parents.push(parent);
         parent.children.push(child);
 
-        try {
+        assert.throws(function() {
             parent.set(1);
-        } catch (error) {
-            assert.is(error.message, "Stream does not define update()");
-            return;
-        }
-
-        assert.fail();
+        }, 'Stream does not define update()');
     });
 
 });

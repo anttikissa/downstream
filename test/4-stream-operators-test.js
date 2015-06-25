@@ -87,12 +87,122 @@ test('4-stream-operators-test.js', function() {
         assert.is(uniquesResult, 'HLWRLD');
     });
 
+    test('stream.reduce()', function() {
+
+        test('without initial value in the source stream', function() {
+            var numbers = stream();
+
+            var sum = numbers.reduce(plus);
+
+            assert.is(sum.value, undefined);
+
+            numbers.set(1);
+            assert.is(sum.value, 1);
+
+            numbers.set(2);
+            assert.is(sum.value, 3);
+
+            numbers.set(3);
+            assert.is(sum.value, 6);
+        });
+
+        test('with initial value in the source stream', function() {
+            var numbers = stream().set(10);
+
+            var sum = numbers.reduce(plus);
+
+            assert.is(sum.value, 10);
+
+            numbers.set(1);
+            assert.is(sum.value, 11);
+
+            numbers.set(2);
+            assert.is(sum.value, 13);
+        });
+    });
+
+    test('stream.reduce(initial)', function() {
+
+        test('without initial value in the source stream', function() {
+            var values = stream();
+
+            var collected = values.reduce(function(result, value) {
+                return result.concat(value);
+            }, []);
+
+            var listenerCalled = 0;
+            collected.forEach(function() {
+                listenerCalled++;
+            });
+
+            test('listener gets called once with the initial value')
+            assert.is(listenerCalled, 1);
+            assert.eq(collected.value, []);
+
+            values.set('hello');
+            assert.eq(collected.value, ['hello']);
+            values.set('world');
+            assert.eq(collected.value, ['hello', 'world']);
+        });
+
+    });
+
     test('stream.combine() with two sources', function() {
         var odds = stream().set(1);
         var evens = stream().set(2);
 
         var sums = stream.combine(plus, odds, evens);
         assert.is(sums.value, 3);
+    });
+
+    test('stream.combine() with three sources', function() {
+        var ones = stream().set(1);
+        var twos = stream().set(2);
+        var threes = stream().set(3);
+
+        var sums = stream.combine(plusThree, ones, twos, threes);
+        assert.is(sums.value, 6);
+
+        ones.set(11);
+        assert.is(sums.value, 16);
+
+        twos.set(22);
+        assert.is(sums.value, 36);
+
+        threes.set(33);
+        assert.is(sums.value, 66);
+    });
+
+    // A lesser-used combination because stream.map() does the same.
+    test('stream.combine() with one source', function() {
+        var s = stream().set(1);
+        var s2 = stream.combine(inc, s);
+        assert.is(s2.value, 2);
+    });
+
+    test('error messages when passing in a non-function', function() {
+        test('map, reduce, filter', function() {
+            ['map', 'reduce', 'filter'].forEach(function(method) {
+                var s = stream();
+                assert.throws(function() {
+                    s[method]('not-a-function');
+                }, 'f (not-a-function) is not a function');
+            });
+        });
+
+        test('stream.combine()', function() {
+            assert.throws(function() {
+                stream.combine('not-a-function');
+            }, 'f (not-a-function) is not a function');
+        });
+    });
+
+    // A pointless operation - f will never be called and the stream never
+    // updates because it has no parents to trigger an update. But there's no
+    // reason not to implement it.
+    test('stream.combine() with zero sources', function() {
+        var s = stream.combine(function() { return 123; });
+        assert.is(s.value, undefined);
     });
 
     test('stream.combine(), combining mapped streams', function() {

@@ -23,6 +23,8 @@ function Stream(parentOrParents, options) {
     this.children = [];
     this.listeners = [];
     this.version = 0;
+    // state is one of 'active', 'ended', or 'error'
+    this.state = 'active';
 
     this.parents.forEach(function(parent) {
         if (!(parent instanceof Stream)) {
@@ -49,6 +51,13 @@ function Stream(parentOrParents, options) {
 // Does this stream have a value?
 Stream.prototype.hasValue = function() {
     return typeof this.value !== 'undefined';
+};
+
+// Stream::hasEnded() -> boolean
+//
+// Has this stream ended?
+Stream.prototype.hasEnded = function() {
+    return this.state === 'ended';
 };
 
 // Stream::addChild(Stream child)

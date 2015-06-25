@@ -23,4 +23,23 @@ test('3-stream-listeners-test.js', function() {
         s.removeListener(f);
         assert(s.listeners.length === 1);
     });
+
+    test('Stream::addEndListener() and Stream::removeEndListener', function() {
+        var s = stream();
+
+        assert.is(s.endListeners, undefined);
+
+        var x = function x() {};
+        s.addEndListener(x);
+
+        assert.is(s.endListeners.length, 1);
+        assert.is(s.endListeners[0], x);
+
+        s.removeEndListener(x);
+        assert.eq(s.endListeners, []);
+    });
+
+    test('Stream::then()', function() {
+        // TODO
+    })
 });

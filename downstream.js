@@ -1,3 +1,39 @@
+//
+// downstream.js
+//
+// How to read type signatures:
+//
+// "someFunction(Type x)" means:
+// `x` must be of type `Type` in the sense that `x instanceof Type` must be true
+//
+// "someFunction(type x)" means:
+// `x` must be of type `type` in the sense that `typeof x` must be `type`
+//
+// "someFunction(x)" means:
+// `x` can be of any type
+//
+// "someFunction(optional x) means:
+// `x` can be left unspecified
+//
+// Downstream's methods and functions appear in two namespaces:
+//
+// "Stream::f()" means that the function is found in `Stream.prototype`, i.e.,
+// it's a method of type `Stream`
+//
+// "stream.f()" means that the function is is found directly in `stream`
+// namespace without requiring an instance of `Stream`
+//
+// The `stream` namespace is what you get with:
+// `var stream = require('downstream');`
+//
+
+//
+// 1-stream.js
+//
+// This file contains the constructor new Stream(), and the equivalent function
+// stream(), along with some debugging tools.
+//
+
 // Copy all attributes from 'sources' to 'target'.
 function extend(target /*, ...sources */) {
     for (var i = 1; i < arguments.length; i++) {
@@ -9,7 +45,7 @@ function extend(target /*, ...sources */) {
     }
 }
 
-// isArray(Object object)
+// isArray(object)
 //
 // Is `object` an array?
 function isArray(object) {
@@ -20,6 +56,27 @@ function isArray(object) {
 //
 // Call 'f' a bit later.
 var defer = typeof setImmediate === 'function' ? setImmediate : setTimeout;
+
+// Type-checking utilities
+
+// assertFunction(f)
+//
+// Throw user-readable error unless `f` is a function
+function assertFunction(f) {
+    if (typeof f !== 'function') {
+        throw new Error('f (' + f + ') is not a function');
+    }
+}
+
+// assertActive(Stream stream)
+//
+// Throw user-readable error if `stream` is ended or in error state
+function assertActive(stream) {
+    if (stream.state !== 'active') {
+        throw new Error("stream is in state '" + stream.state
+            + "', should be 'active'");
+    }
+}
 //
 // 1-stream.js
 //
@@ -45,6 +102,8 @@ function Stream(parentOrParents, options) {
     this.children = [];
     this.listeners = [];
     this.version = 0;
+    // state is one of 'active', 'ended', or 'error'
+    this.state = 'active';
 
     this.parents.forEach(function(parent) {
         if (!(parent instanceof Stream)) {
@@ -71,6 +130,13 @@ function Stream(parentOrParents, options) {
 // Does this stream have a value?
 Stream.prototype.hasValue = function() {
     return typeof this.value !== 'undefined';
+};
+
+// Stream::hasEnded() -> boolean
+//
+// Has this stream ended?
+Stream.prototype.hasEnded = function() {
+    return this.state === 'ended';
 };
 
 // Stream::addChild(Stream child)
@@ -156,6 +222,8 @@ Stream.prototype.newValue = function(value) {
 //
 // Return `this` so you can do things like `s.set(1).forEach(f)`.
 Stream.prototype.set = function(value) {
+    assertActive(this);
+    
     stream.version++;
 
     // Start by updating my value.
@@ -240,22 +308,65 @@ stream.updateOrder = function(source) {
 
     return result;
 };
+
+// Stream::end()
+//
+// Declares that this stream has done its business, and that its final value is
+// `this.value`.
+//
+// `Stream::end()` is to `Stream::then` and `Stream::done` what
+// `Stream::set()` is to `Stream::forEach`.
+//
+// Ending a stream consists of three steps:
+//
+// - Set my state to `ended`
+// - Inform end listeners that this stream has ended
+// - Inform children that this stream has ended
+//
+// After children and listeners have been informed, this stream doesn't need a
+// reference to them any more, so delete those links.
+//
+// If you want to end a stream with a value, call `this.set(finalValue)` first.
+Stream.prototype.end = function() {
+    // TODO make sure this is necessary
+    assertActive(this);
+
+    this.state = 'ended';
+
+    if (this.endListeners) {
+        this.endListeners.forEach(function(listener) {
+            listener(this.value);
+        }, this);
+    }
+
+    this.listeners = [];
+
+    this.children.forEach(function(child) {
+        // Maybe child.parentHasEnded(this)
+        // so they can override the ending behavior
+        child.end();
+    });
+
+    this.children = [];
+};
 //
 // 3-stream-listeners.js
 //
 // This file is about listeners: adding and removing them from streams.
+//
 // `Stream::forEach()` is the primary way to add listeners. Internally, it calls
 // `Stream::addListener()`, and you can call `Stream::removeListener` to remove
 // the link to the listener.
 //
 // Eventually, there will be possibility to listen to errors and ends in
 // addition to values. Wait and see.
+// TODO fill in Stream::then() here
 //
 // In general, the following rules apply to all listeners:
 //
 // - Trying to remove a listener that hasn't been added is a no-op.
 // - You can add the same listener more than once.
-// - In that case, you must remove the listener as many times as you
+// - In that case, you must remove the listener as many times as you added it.
 //
 
 // Stream::forEach(Function f) -> Stream
@@ -277,16 +388,66 @@ Stream.prototype.forEach = function(f) {
     return this;
 };
 
+// Stream::addListener(Function f)
+//
 // Add `f` to `this.listeners`.
 Stream.prototype.addListener = function(f) {
     this.listeners.push(f);
 };
 
+// Stream::removeListener(Function f)
+//
 // Remove the first instance of `f` from `this.listeners`, if it is there.
 Stream.prototype.removeListener = function(f) {
     var idx = this.listeners.indexOf(f);
     if (idx !== -1) {
         this.listeners.splice(idx, 1);
+    }
+};
+
+// Stream::then(Function f) -> Stream
+//
+// Add a listener that will be called when the stream is done. Returns a
+// `Stream` whose nature depends on the value returned by listener. If it
+// returns a value, the resulting stream will end with that value. If it returns
+// a stream, the resulting stream will update with the returned stream's values.
+//
+// TODO good example
+Stream.prototype.then = function(f) {
+    if (this.hasEnded()) {
+        f(this.value);
+        // No need to addEndListener(), since end only happens once
+        return;
+    }
+
+    this.addEndListener(f);
+
+    var result = stream();
+
+    // TODO implement when flatMap is there
+    return result;
+};
+
+// Stream::addEndListener(Function f)
+//
+// Add `f` to `this.endListeners`, which is initialized lazily.
+Stream.prototype.addEndListener = function(f) {
+    if (!this.endListeners) {
+        this.endListeners = [];
+    }
+    this.endListeners.push(f);
+};
+
+// Stream::removeEndListener(Function f)
+//
+// Remove listener from `endListeners`.
+Stream.prototype.removeEndListener = function(f) {
+    if (this.endListeners) {
+        // TODO refactoring opportunity: extract "remove from array"
+        var idx = this.endListeners.indexOf(f);
+        if (idx !== -1) {
+            this.endListeners.splice(idx, 1);
+        }
     }
 };
 //
@@ -307,11 +468,13 @@ Stream.prototype.removeListener = function(f) {
 //
 // Create a stream that updates with `f(x)` when this stream updates with `x`.
 //
-// var s2 = s1.map(function(value) { return value + 1; });
+//  var s2 = s1.map(function(value) { return value + 1; });
 //
-// s1: 1 1 2 2 5 6 6
-// s2: 2 2 3 3 6 7 7
+//  s1: 1 1 2 2 5 6 6
+//  s2: 2 2 3 3 6 7 7
 Stream.prototype.map = function(f) {
+    assertFunction(f);
+
     function mapUpdate(parent) {
         this.newValue(this.f(parent.value));
     }
@@ -324,11 +487,13 @@ Stream.prototype.map = function(f) {
 // Create a stream that updates with `x` when this stream updates with `x` and
 // `f(x)` is true.
 //
-// var s2 = s1.filter(function(n) { return n % 2; });
+//  var s2 = s1.filter(function(n) { return n % 2; });
 //
-// s1: 1 1 2 2 5 6 6
-// s2: 1 1     5
+//  s1: 1 1 2 2 5 6 6
+//  s2: 1 1     5
 Stream.prototype.filter = function(f) {
+    assertFunction(f);
+
     function filterUpdate(parent) {
         if (this.f(parent.value)) {
             this.newValue(parent.value);
@@ -346,10 +511,10 @@ Stream.prototype.filter = function(f) {
 // The equality check used is `===`, so you might not get the expected result if
 // your stream gives `NaN` values (because `NaN !== NaN`).
 //
-// var s2 = s1.uniq();
+//  var s2 = s1.uniq();
 //
-// s1: 1 1 2 2 5 6 6
-// s2: 1   2   5 6
+//  s1: 1 1 2 2 5 6 6
+//  s2: 1   2   5 6
 Stream.prototype.uniq = function() {
     function uniqUpdate(parent) {
         if (this.value !== parent.value) {
@@ -360,22 +525,77 @@ Stream.prototype.uniq = function() {
     return stream(this, { update: uniqUpdate });
 };
 
+// Stream::reduce(Function callback, optional any initialValue) -> Stream
+//
+// Create a stream that updates with `callback(previous value, value)` whenever
+// the parent stream updates with `value`.
+//
+// If `initialValue` is provided, the stream starts with the value
+// `initialValue`; if the parent also has a value at that time (`value`), the
+// stream starts with the value `callback(initialValue, value)`.
+//
+// If `initialValue` is not provided, the stream starts with the parent stream's
+// value (which may be `undefined`).
+//
+// You can think of Stream::reduce() as an Array::reduce() in the time
+// dimension, and with the following main differences:
+//
+// - Stream::reduce() provides the user with the intermediate results as they
+//   become available. If you just need the final result when the parent stream
+//   is done, use `s.reduce(...).then(...)`.
+// - It's an error to give `Array::reduce()` an empty array and no initial
+//   value, but giving `Stream::reduce()` an empty stream is perfectly fine,
+//   even though there is no initial value (and results in an empty stream).
+// - Unlike Array::reduce(), Stream::reduce() calls its callback with just two
+//   arguments: the current value of the accumulator, and the next value.
+//
+// An example with a symmetric callback (one that takes two arguments of the
+// same type):
+//
+//  var s1 = stream();
+//  var s2 = s1.reduce(function(x, y) { return x + y; });
+//
+//  s1  1   2   3   4    5
+//  s2  1   3   6   10   15
+//
+// An example with an asymmetric callback (one that takes an accumulator of one
+// type and a value of another type):
+//
+//  var s3 = stream();
+//  var s4 = s1.reduce(function(result, x) { return result.concat(x); }, []);
+//
+//  s3      1     2        3
+//  s4 []   [1]   [1, 2]   [1, 2, 3]
+//
+Stream.prototype.reduce = function(f, initialValue) {
+    assertFunction(f);
+
+    function reduceUpdate(parent) {
+        if (this.hasValue()) {
+            this.newValue(this.f(this.value, parent.value));
+        } else {
+            this.newValue(parent.value);
+        }
+    }
+
+    return stream(this, { update: reduceUpdate, f: f, value: initialValue })
+}
+
 // stream.combine(Function f, ...Stream streams) -> Stream
 //
 // Create a stream that represents the value of one or more source streams
 // combined by `f`. The resulting stream updates when any of the source streams
 // updates.
 //
-// var s4 = stream.combine(add, s1, s2, s3);
+//  var s4 = stream.combine(add, s1, s2, s3);
 //
-// s1: 1     0
-// s2: 2 4 3   8
-// s3: 3       1
-// s4: 6 8 7 6 9
+//  s1: 1     0
+//  s2: 2 4 3   8
+//  s3: 3       1
+//  s4: 6 8 7 6 9
 stream.combine = function(f) {
-    if (typeof f !== 'function') {
-        throw new Error('f (' + f + ') is not a function');
-    }
+    assertFunction(f);
+
     var sourceStreams = Array(arguments.length - 1);
     for (var i = 1, length = arguments.length; i < length; i++) {
         sourceStreams[i - 1] = arguments[i];
@@ -389,8 +609,5 @@ stream.combine = function(f) {
         this.newValue(this.f.apply(this, parentValues));
     }
 
-    return stream(sourceStreams, {
-        update: combineUpdate,
-        f: f
-    });
+    return stream(sourceStreams, { update: combineUpdate, f: f });
 };

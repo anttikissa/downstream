@@ -27,7 +27,12 @@ function defer(f) {
 // });
 var depth = 0;
 
+var failed = false;
+
 function test(what, f) {
+    if (failed) {
+        return;
+    }
     log(Array(depth + 1).join('| ') + what);
     depth++;
     if (f) {
@@ -52,8 +57,8 @@ function describe(value) {
 function report(error) {
     console.error(error.message);
     console.error(error.stack.split('\n').slice(2, 5).join('\n'));
-    // fail fast; uncomment to run all tests
-    throw error;
+    failed = true;
+    // throw error;
 }
 
 // Assertion check for equality.
@@ -72,6 +77,19 @@ assert.eq = function(x, y) {
 
 assert.fail = function() {
     report(new Error('Should not be here'));
+};
+
+// Assert that `f` throws an error with message `message`.
+assert.throws = function(f, message) {
+    try {
+        f();
+        report(new Error("Function didn't throw, expected '" + message + "'"));
+    } catch (err) {
+        if (err.message !== message) {
+            report(new Error('Function threw with message "' + err.message
+                + '", expected "' + message + '"'))
+        }
+    }
 };
 
 // Helper to check that stream eventually gets values of 'values' in that order.
