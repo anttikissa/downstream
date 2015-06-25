@@ -77,6 +77,22 @@ Stream.prototype.then = function(f) {
     return result;
 };
 
+// Stream::done(Function f)
+//
+// Like `Stream::then()`, but for side-effects only.
+//
+// `Stream::done()` is to `Stream::then` like `Stream::forEach` is to
+// `Stream::map`.
+Stream.prototype.done = function(f) {
+    // TODO extract this maybe
+    if (this.hasEnded()) {
+        f(this.value);
+        return;
+    }
+
+    this.addEndListener(f);
+};
+
 // Stream::addEndListener(Function f)
 //
 // Add `f` to `this.endListeners`, which is initialized lazily.
