@@ -21,8 +21,12 @@ test('2-stream-set-test.js', function() {
     test('Stream::end()', function() {
         test('sets the stream to ended state', function() {
             var s = stream();
+
+            assert.is(s.state, 'active');
+            assert(!s.hasEnded());
             s.end();
             assert.is(s.state, 'ended');
+            assert(s.hasEnded());
         });
 
         test('fail if stream not active', function() {

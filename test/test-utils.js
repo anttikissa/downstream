@@ -2,12 +2,6 @@ function log() {
     console.log.apply(console, arguments);
 }
 
-function assert(what) {
-    if (!what) {
-        throw new Error('not true: ' + what);
-    }
-}
-
 function defer(f) {
     setTimeout(f, 1);
 }
@@ -59,6 +53,13 @@ function report(error) {
     console.error(error.stack.split('\n').slice(2, 5).join('\n'));
     failed = true;
     // throw error;
+}
+
+// Assert that `what` is truthy.
+function assert(what) {
+    if (!what) {
+        report(new Error('Not true: ' + what));
+    }
 }
 
 // Assertion check for equality.
