@@ -121,7 +121,7 @@ test('4-stream-operators-test.js', function() {
         });
     });
 
-    test('stream.reduce()', function() {
+    test('Stream::reduce()', function() {
         test('without initial value in the source stream', function() {
             var numbers = stream();
 
@@ -181,8 +181,7 @@ test('4-stream-operators-test.js', function() {
         });
     });
 
-    test('stream.reduce(initial)', function() {
-
+    test('Stream::collect(initial)', function() {
         test('without initial value in the source stream', function() {
             var values = stream();
 
@@ -205,6 +204,42 @@ test('4-stream-operators-test.js', function() {
             assert.eq(collected.value, ['hello', 'world']);
         });
 
+    });
+
+    test('Stream::collect()', function() {
+        test('numbers', function() {
+            var s = stream();
+            var s2 = s.collect();
+
+            s.set(1);
+            s.set(2);
+
+            assert.eq(s2.value, [1, 2]);
+
+            test('collected stream ends when parent ends', function() {
+                var doneCalled = false;
+                s2.done(function(finalValue) {
+                    assert.eq(finalValue, [1, 2]);
+                    doneCalled = true;
+                });
+
+                s.end();
+                assert(doneCalled);
+            });
+        });
+
+        // Because a wrongly implemented `.reduce()` might use `Array::concat()`
+        // without wrapping the argument in a `[]`. Also test initial value.
+        test('arrays', function() {
+            var s = stream().set([]);
+            var s2 = s.collect();
+
+            assert.eq(s2.value, [[]]);
+
+            s.set([1, 2, 3]);
+
+            assert.eq(s2.value, [[], [1, 2, 3]]);
+        })
     });
 
     test('stream.combine()', function() {
@@ -275,7 +310,7 @@ test('4-stream-operators-test.js', function() {
         });
 
         test('end() works properly with diamond-like dependency structure', function() {
-            // TODO
+            // TODO it's likely that in fact it does not
         });
     });
 
@@ -295,4 +330,46 @@ test('4-stream-operators-test.js', function() {
             }, 'f (not-a-function) is not a function');
         });
     });
+
+    test('Stream::merge()', function() {
+        test('with two streams', function() {
+            var s = stream();
+            var s2 = stream();
+            var merged = stream.merge(s, s2);
+
+            s.set(1);
+            assert.is(merged.value, 1);
+
+            s2.set(2);
+            assert.is(merged.value, 2);
+        });
+
+        test('with three streams', function() {
+            return; // TODO fix when end works
+
+            var s = stream();
+            var s2 = stream();
+            var s3 = stream();
+
+            var merged = stream.merge(s, s2, s3);
+
+            var doneCalled = false;
+            merged.collect().done(function(values) {
+                assert.eq(values, ([1, 2, 3, 4]));
+                doneCalled = true;
+            });
+
+            s3.set(1);
+            s2.set(2);
+            s.set(3);
+            s2.set(4);
+            s.end();
+            // TODO the FIRST end() should not end the resulting stream
+            s2.end();
+            s3.end();
+
+            assert(doneCalled);
+        });
+
+    })
 });

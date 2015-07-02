@@ -608,6 +608,22 @@ Stream.prototype.reduce = function (f, initialValue) {
     return stream(this, { update: reduceUpdate, f: f, value: initialValue });
 };
 
+// Stream::collect() -> Stream
+//
+// A stream of arrays of every value so far seen on the parent stream.
+//
+// var s1 = stream();
+// var s2 = stream.collect();
+//
+// s1  1    2       3
+// s2  [1]  [1, 2]  [1, 2, 3]
+//
+Stream.prototype.collect = function () {
+    return this.reduce(function (result, x) {
+        return result.concat([x]);
+    }, []);
+};
+
 // stream.combine(Function f, ...Stream streams) -> Stream
 //
 // A stream of `f(value1, value2, ...)` that updates whenever one or
@@ -658,7 +674,37 @@ stream.combineWhenAll = function (f) {};
 // The resulting stream gets its initial value from the parent that was updated
 // most recently (it peeks at the streams' `version` properties and chooses the
 // newest one).
-stream.merge = function () {};
+stream.merge = function () {
+    function mergeUpdate() {
+        var _this3 = this;
+
+        this.parents.forEach(function (parent) {
+            if (parent.wasUpdated()) {
+                _this3.newValue(parent.value);
+            }
+        });
+    }
+
+    // Take version and value from the most recently updated parent (if one
+    // exists).
+    var newestParent;
+
+    for (var _len2 = arguments.length, streams = Array(_len2), _key2 = 0; _key2 < _len2; _key2++) {
+        streams[_key2] = arguments[_key2];
+    }
+
+    streams.forEach(function (parent) {
+        if (!newestParent || parent.version >= newestParent.version) {
+            newestParent = parent;
+        }
+    });
+
+    return stream(streams, {
+        update: mergeUpdate,
+        value: newestParent && newestParent.value,
+        version: newestParent && newestParent.version
+    });
+};
 
 stream.flatMap = function () {
     // TODO
@@ -669,6 +715,4 @@ stream.flatMap = function () {
 // end of downstream.js
 //# sourceMappingURL=downstream.js.map
 ;
-// TODO
-
 // TODO
