@@ -1,3 +1,4 @@
+// downstream.js
 //
 // downstream.js
 //
@@ -88,6 +89,7 @@ function assertActive(stream) {
             + "', should be 'active'");
     }
 }
+
 //
 // 1-stream.js
 //
@@ -186,6 +188,7 @@ Stream.prototype.log = function(prefix) {
         });
     }
 };
+
 //
 // 2-stream-set.js
 //
@@ -360,6 +363,7 @@ Stream.prototype.end = function() {
 
     this.children = [];
 };
+
 //
 // 3-stream-listeners.js
 //
@@ -477,6 +481,7 @@ Stream.prototype.removeEndListener = function(f) {
         }
     }
 };
+
 //
 // 4-stream-listeners.js
 //
@@ -673,3 +678,6 @@ stream.flatMap = function() {
     // TODO
     // +Latest
 }
+
+// end of downstream.js
+//# sourceMappingURL=downstream.js.map
