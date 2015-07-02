@@ -5,7 +5,6 @@ TARGET=downstream.js
 
 echo "[concat] source: $SOURCES"
 echo "[concat] target: downstream.js"
-# cat src/?-*.js > downstream.js
 ./util/concat src/?-*.js
 WCRESULT="`wc -c $TARGET | sed -e 's/^ *//'`"
 echo "[result] $WCRESULT"
