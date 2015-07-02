@@ -55,17 +55,6 @@ function isArray(object) {
     return Array.isArray(object);
 }
 
-// toArray(arrayLike) -> Array
-//
-// Convert array-like object into an array (meant for argument lists, etc.)
-function toArray(arrayLike) {
-    var result = Array(arrayLike.length);
-    for (var i = 0; i < arrayLike.length; i++) {
-        result[i] = arrayLike[i];
-    }
-    return result;
-}
-
 // defer(Function f)
 //
 // Call 'f' a bit later.
@@ -669,10 +658,7 @@ stream.combineWhenAll = function (f) {};
 // The resulting stream gets its initial value from the parent that was updated
 // most recently (it peeks at the streams' `version` properties and chooses the
 // newest one).
-stream.merge = function () {
-    var sourceStreams = toArray(arguments);
-    // TODO
-};
+stream.merge = function () {};
 
 stream.flatMap = function () {
     // TODO
@@ -683,4 +669,6 @@ stream.flatMap = function () {
 // end of downstream.js
 //# sourceMappingURL=downstream.js.map
 ;
+// TODO
+
 // TODO

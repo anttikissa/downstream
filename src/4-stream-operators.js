@@ -180,8 +180,9 @@ stream.combineWhenAll = function(f) {
 // The resulting stream gets its initial value from the parent that was updated
 // most recently (it peeks at the streams' `version` properties and chooses the
 // newest one).
-stream.merge = function() {
-    var sourceStreams = toArray(arguments);
+stream.merge = function(...streams) {
+    
+
     // TODO
 };
 

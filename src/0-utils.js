@@ -52,17 +52,6 @@ function isArray(object) {
 	return Array.isArray(object);
 }
 
-// toArray(arrayLike) -> Array
-//
-// Convert array-like object into an array (meant for argument lists, etc.)
-function toArray(arrayLike) {
-    var result = Array(arrayLike.length);
-    for (var i = 0; i < arrayLike.length; i++) {
-        result[i] = arrayLike[i];
-    }
-    return result;
-}
-
 // defer(Function f)
 //
 // Call 'f' a bit later.
