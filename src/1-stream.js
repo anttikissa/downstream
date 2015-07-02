@@ -26,12 +26,12 @@ function Stream(parentOrParents, options) {
     // state is one of 'active', 'ended', or 'error'
     this.state = 'active';
 
-    this.parents.forEach(function(parent) {
+    this.parents.forEach(parent => {
         if (!(parent instanceof Stream)) {
             throw new Error('parent ' + parent + ' is not a Stream');
         }
         parent.addChild(this);
-    }, this);
+    });
 
     extend(this, options);
 

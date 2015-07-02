@@ -147,13 +147,8 @@ Stream.prototype.reduce = function(f, initialValue) {
 //  s2: 2 4 3   8
 //  s3: 3       1
 //  s4: 6 8 7 6 9
-stream.combine = function(f) {
+stream.combine = function(f, ...streams) {
     assertFunction(f);
-
-    var sourceStreams = Array(arguments.length - 1);
-    for (var i = 1, length = arguments.length; i < length; i++) {
-        sourceStreams[i - 1] = arguments[i];
-    }
 
     function combineUpdate() {
         var parentValues = this.parents.map(function(parent) {
@@ -163,7 +158,7 @@ stream.combine = function(f) {
         this.newValue(this.f.apply(this, parentValues));
     }
 
-    return stream(sourceStreams, { update: combineUpdate, f: f });
+    return stream(streams, { update: combineUpdate, f: f });
 };
 
 stream.combineWhenAll = function(f) {

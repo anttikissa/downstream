@@ -157,9 +157,9 @@ Stream.prototype.end = function() {
     this.state = 'ended';
 
     if (this.endListeners) {
-        this.endListeners.forEach(function(listener) {
+        this.endListeners.forEach(listener => {
             listener(this.value);
-        }, this);
+        });
     }
 
     this.listeners = [];

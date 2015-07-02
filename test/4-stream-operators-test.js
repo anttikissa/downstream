@@ -122,7 +122,6 @@ test('4-stream-operators-test.js', function() {
     });
 
     test('stream.reduce()', function() {
-
         test('without initial value in the source stream', function() {
             var numbers = stream();
 

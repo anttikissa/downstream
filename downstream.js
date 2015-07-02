@@ -104,6 +104,8 @@ function assertActive(stream) {
 //  optional Stream parent | Stream[] parents,
 //  optional object options) -> Stream
 function Stream(parentOrParents, options) {
+    var _this = this;
+
     // Handle the first argument that can be undefined, Stream or Stream[].
     if (parentOrParents) {
         this.parents = isArray(parentOrParents) ? parentOrParents : [parentOrParents];
@@ -121,8 +123,8 @@ function Stream(parentOrParents, options) {
         if (!(parent instanceof Stream)) {
             throw new Error('parent ' + parent + ' is not a Stream');
         }
-        parent.addChild(this);
-    }, this);
+        parent.addChild(_this);
+    });
 
     extend(this, options);
 
@@ -341,6 +343,8 @@ stream.updateOrder = function (source) {
 //
 // If you want to end a stream with a value, call `this.set(finalValue)` first.
 Stream.prototype.end = function () {
+    var _this2 = this;
+
     // TODO make sure this is necessary
     assertActive(this);
 
@@ -348,8 +352,8 @@ Stream.prototype.end = function () {
 
     if (this.endListeners) {
         this.endListeners.forEach(function (listener) {
-            listener(this.value);
-        }, this);
+            listener(_this2.value);
+        });
     }
 
     this.listeners = [];
@@ -633,11 +637,6 @@ Stream.prototype.reduce = function (f, initialValue) {
 stream.combine = function (f) {
     assertFunction(f);
 
-    var sourceStreams = Array(arguments.length - 1);
-    for (var i = 1, length = arguments.length; i < length; i++) {
-        sourceStreams[i - 1] = arguments[i];
-    }
-
     function combineUpdate() {
         var parentValues = this.parents.map(function (parent) {
             return parent.value;
@@ -646,7 +645,11 @@ stream.combine = function (f) {
         this.newValue(this.f.apply(this, parentValues));
     }
 
-    return stream(sourceStreams, { update: combineUpdate, f: f });
+    for (var _len = arguments.length, streams = Array(_len > 1 ? _len - 1 : 0), _key = 1; _key < _len; _key++) {
+        streams[_key - 1] = arguments[_key];
+    }
+
+    return stream(streams, { update: combineUpdate, f: f });
 };
 
 stream.combineWhenAll = function (f) {};
