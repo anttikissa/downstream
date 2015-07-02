@@ -14,7 +14,7 @@
 
 // Stream::map(Function f) -> Stream
 //
-// Create a stream that updates with `f(x)` when this stream updates with `x`.
+// A stream of `f(x)` for every value `x` of this stream.
 //
 //  var s2 = s1.map(function(value) { return value + 1; });
 //
@@ -32,8 +32,7 @@ Stream.prototype.map = function(f) {
 
 // Stream::filter(Function f) -> Stream
 //
-// Create a stream that updates with `x` when this stream updates with `x` and
-// `f(x)` is true.
+// A stream of `x` for every value `x` of this stream for which `f(x)` is true.
 //
 //  var s2 = s1.filter(function(n) { return n % 2; });
 //
@@ -53,8 +52,11 @@ Stream.prototype.filter = function(f) {
 
 // Stream::uniq() -> Stream
 //
-// Create a stream that updates when its parent updates but only when the value
-// changes (like the UNIX tool `uniq(1)``).
+// A stream of `x` for every value `x` of this stream for which
+// `x !== previous x` is true.
+//
+// In other words, only update when the new value is different from the old one,
+// like the UNIX tool `uniq(1)`.
 //
 // The equality check used is `===`, so you might not get the expected result if
 // your stream gives `NaN` values (because `NaN !== NaN`).
@@ -73,14 +75,15 @@ Stream.prototype.uniq = function() {
     return stream(this, { update: uniqUpdate });
 };
 
-// Stream::reduce(Function callback, optional any initialValue) -> Stream
+// Stream::reduce(Function f, optional any initialValue) -> Stream
 //
-// Create a stream that updates with `callback(previous value, value)` whenever
-// the parent stream updates with `value`.
+// A stream of `f(previous x, x)` for every value `x` of this stream, except for
+// the first value that is `initialValue` or `this.value` if only one of them is
+// defined.
 //
 // If `initialValue` is provided, the stream starts with the value
 // `initialValue`; if the parent also has a value at that time (`value`), the
-// stream starts with the value `callback(initialValue, value)`.
+// stream starts with the value `f(initialValue, value)`.
 //
 // If `initialValue` is not provided, the stream starts with the parent stream's
 // value (which may be `undefined`).
@@ -131,9 +134,12 @@ Stream.prototype.reduce = function(f, initialValue) {
 
 // stream.combine(Function f, ...Stream streams) -> Stream
 //
-// Create a stream that represents the value of one or more source streams
-// combined by `f`. The resulting stream updates when any of the source streams
-// updates.
+// A stream of `f(value1, value2, ...)` that updates whenever one or
+// more of `streams` updates. (Their values being `value1` etc.)
+//
+// Intended to be used for streams that already have values (or with an `f` that
+// tolerates lack of parameters). If you need all source streams to have
+// values before `f` can produce its first value, use `stream.combineWhenAll`.
 //
 //  var s4 = stream.combine(add, s1, s2, s3);
 //
@@ -159,3 +165,32 @@ stream.combine = function(f) {
 
     return stream(sourceStreams, { update: combineUpdate, f: f });
 };
+
+stream.combineWhenAll = function(f) {
+    // TODO
+};
+
+// stream.merge(...Stream streams) -> Stream
+//
+// A stream of `x` for every updating parent's value `x`
+//
+// Create a stream that merges 1 or more streams (or, in the degenerate case,
+// 0). Whenever one of its parent streams updates, with the value of that
+// stream.
+//
+// If two or more of its parent streams updates at the same tick, the resulting
+// stream will update only once. The value will be taken from the stream that
+// comes later in the argument list.
+//
+// The resulting stream gets its initial value from the parent that was updated
+// most recently (it peeks at the streams' `version` properties and chooses the
+// newest one).
+stream.merge = function() {
+    var sourceStreams = toArray(arguments);
+    // TODO
+};
+
+stream.flatMap = function() {
+    // TODO
+    // +Latest
+}
