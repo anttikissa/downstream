@@ -46,7 +46,7 @@ Stream.prototype.newValue = function(value) {
 // Return `this` so you can do things like `s.set(1).forEach(f)`.
 Stream.prototype.set = function(value) {
     assertActive(this);
-    
+
     stream.version++;
 
     // Start by updating my value.
