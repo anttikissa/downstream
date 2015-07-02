@@ -1,0 +1,29 @@
+#!/usr/bin/env node
+// vim: set ft=javascript:
+
+var fs = require('fs');
+var babel = require('babel-core');
+
+// TODO could take from options, but let's be lazy for now
+var sourceFile = process.argv[2];
+var targetFile = 'downstream.js';
+
+var sourceSourceMap = sourceFile + '.map';
+var targetSourceMap = targetFile + '.map';
+
+var inputSourceMap = JSON.parse(fs.readFileSync(sourceSourceMap, 'utf8'));
+
+var babelOptions = {
+    sourceMaps: true,
+    inputSourceMap: inputSourceMap
+};
+
+var result = babel.transformFileSync(sourceFile, babelOptions);
+
+// Before this, the last line has source map URL like
+// sourceMappingURL=downstream-es6.js.map; we want it to be
+// sourceMappingURL=downstream.js.map. So:
+result.code = result.code.replace(sourceSourceMap, targetSourceMap);
+
+fs.writeFileSync(targetFile, result.code, 'utf8');
+fs.writeFileSync(targetSourceMap, JSON.stringify(result.map), 'utf8');

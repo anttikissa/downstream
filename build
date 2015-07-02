@@ -5,7 +5,10 @@ TARGET=downstream.js
 
 echo "[concat] source: $SOURCES"
 echo "[concat] target: downstream.js"
-./util/concat src/?-*.js
+./util/concat $SOURCES
+echo "[babel] source: downstream-es6.js"
+echo "[babel] target: downstream.js"
+./util/babel downstream-es6.js
 WCRESULT="`wc -c $TARGET | sed -e 's/^ *//'`"
 echo "[result] $WCRESULT"
 echo "[done]   build finished at `date`"

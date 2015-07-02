@@ -193,4 +193,5 @@ stream.merge = function() {
 stream.flatMap = function() {
     // TODO
     // +Latest
+    var x;
 }

@@ -2,7 +2,7 @@
 
 cd $(dirname $0)
 
-SOURCES=src/?-*.js
+SOURCES="src/?-*.js util/* build"
 
 ./build
 

@@ -11,7 +11,7 @@ var resolveSourceMapSync = require("source-map-resolve").resolveSourceMapSync;
 var createDummySourceMap = require("source-map-dummy");
 
 // TODO could take from options, but let's be lazy for now
-var targetFile = 'downstream.js';
+var targetFile = 'downstream-es6.js';
 
 var jsFiles = process.argv.slice(2);
 

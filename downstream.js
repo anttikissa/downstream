@@ -36,6 +36,8 @@
 //
 
 // Copy all attributes from 'sources' to 'target'.
+'use strict';
+
 function extend(target /*, ...sources */) {
     for (var i = 1; i < arguments.length; i++) {
         if (arguments[i]) {
@@ -50,7 +52,7 @@ function extend(target /*, ...sources */) {
 //
 // Is `object` an array?
 function isArray(object) {
-	return Array.isArray(object);
+    return Array.isArray(object);
 }
 
 // toArray(arrayLike) -> Array
@@ -85,8 +87,7 @@ function assertFunction(f) {
 // Throw user-readable error if `stream` is ended or in error state
 function assertActive(stream) {
     if (stream.state !== 'active') {
-        throw new Error("stream is in state '" + stream.state
-            + "', should be 'active'");
+        throw new Error('stream is in state \'' + stream.state + '\', should be \'active\'');
     }
 }
 
@@ -105,9 +106,7 @@ function assertActive(stream) {
 function Stream(parentOrParents, options) {
     // Handle the first argument that can be undefined, Stream or Stream[].
     if (parentOrParents) {
-        this.parents = isArray(parentOrParents)
-            ? parentOrParents
-            : [parentOrParents];
+        this.parents = isArray(parentOrParents) ? parentOrParents : [parentOrParents];
     } else {
         this.parents = [];
     }
@@ -118,7 +117,7 @@ function Stream(parentOrParents, options) {
     // state is one of 'active', 'ended', or 'error'
     this.state = 'active';
 
-    this.parents.forEach(function(parent) {
+    this.parents.forEach(function (parent) {
         if (!(parent instanceof Stream)) {
             throw new Error('parent ' + parent + ' is not a Stream');
         }
@@ -141,21 +140,21 @@ function Stream(parentOrParents, options) {
 // Stream::hasValue() -> boolean
 //
 // Does this stream have a value?
-Stream.prototype.hasValue = function() {
+Stream.prototype.hasValue = function () {
     return typeof this.value !== 'undefined';
 };
 
 // Stream::hasEnded() -> boolean
 //
 // Has this stream ended?
-Stream.prototype.hasEnded = function() {
+Stream.prototype.hasEnded = function () {
     return this.state === 'ended';
 };
 
 // Stream::addChild(Stream child)
 //
 // Register `child` as my child
-Stream.prototype.addChild = function(child) {
+Stream.prototype.addChild = function (child) {
     this.children.push(child);
 };
 
@@ -163,7 +162,7 @@ Stream.prototype.addChild = function(child) {
 // updated; the default implementation ensures that you get this message instead
 // of "Cannot read property 'apply' of undefined" or equivalent
 //
-Stream.prototype.update = function() {
+Stream.prototype.update = function () {
     throw new Error('Stream does not define update()');
 };
 
@@ -177,13 +176,13 @@ function stream(parentOrParents, options) {
 //
 // For every value of `this`, print the value using `console.log`.
 // If `prefix` is given, use that as the first argument to `console.log`.
-Stream.prototype.log = function(prefix) {
+Stream.prototype.log = function (prefix) {
     if (prefix) {
-        this.forEach(function(value) {
+        this.forEach(function (value) {
             console.log(prefix, value);
         });
     } else {
-        this.forEach(function(value) {
+        this.forEach(function (value) {
             console.log(value);
         });
     }
@@ -212,7 +211,7 @@ stream.version = 0;
 //
 // Typically used by update functions that need to know which parent caused the
 // update.
-Stream.prototype.wasUpdated = function() {
+Stream.prototype.wasUpdated = function () {
     return this.version === stream.version;
 };
 
@@ -222,7 +221,7 @@ Stream.prototype.wasUpdated = function() {
 // This marks the stream as updated during this tick.
 //
 // Update functions should use this to set the new value.
-Stream.prototype.newValue = function(value) {
+Stream.prototype.newValue = function (value) {
     this.value = value;
     this.version = stream.version;
 };
@@ -235,9 +234,9 @@ Stream.prototype.newValue = function(value) {
 // value has been updated, call its `forEach` listeners with the new value.
 //
 // Return `this` so you can do things like `s.set(1).forEach(f)`.
-Stream.prototype.set = function(value) {
+Stream.prototype.set = function (value) {
     assertActive(this);
-    
+
     stream.version++;
 
     // Start by updating my value.
@@ -261,7 +260,7 @@ Stream.prototype.set = function(value) {
             s.update.apply(s, s.parents);
         }
 
-        s.listeners.forEach(function(listener) {
+        s.listeners.forEach(function (listener) {
             if (s.wasUpdated()) {
                 listener(s.value);
             }
@@ -287,7 +286,7 @@ Stream.prototype.set = function(value) {
 //  updateOrder(s) => [s, s2, s3, s4]
 //
 // Internally used by stream.set().
-stream.updateOrder = function(source) {
+stream.updateOrder = function (source) {
     // First do a depth-first traversal of nodes.
     var dfsTraversalOrder = [];
 
@@ -314,7 +313,7 @@ stream.updateOrder = function(source) {
     }
 
     var result = [];
-    dfsTraversalOrder.forEach(function(node, idx) {
+    dfsTraversalOrder.forEach(function (node, idx) {
         if (isLastIndexOf(node, idx)) {
             result.push(node);
         }
@@ -341,21 +340,21 @@ stream.updateOrder = function(source) {
 // reference to them any more, so delete those links.
 //
 // If you want to end a stream with a value, call `this.set(finalValue)` first.
-Stream.prototype.end = function() {
+Stream.prototype.end = function () {
     // TODO make sure this is necessary
     assertActive(this);
 
     this.state = 'ended';
 
     if (this.endListeners) {
-        this.endListeners.forEach(function(listener) {
+        this.endListeners.forEach(function (listener) {
             listener(this.value);
         }, this);
     }
 
     this.listeners = [];
 
-    this.children.forEach(function(child) {
+    this.children.forEach(function (child) {
         // Maybe child.parentHasEnded(this)
         // so they can override the ending behavior
         child.end();
@@ -393,7 +392,7 @@ Stream.prototype.end = function() {
 // current value.
 //
 // Returns the stream itself.
-Stream.prototype.forEach = function(f) {
+Stream.prototype.forEach = function (f) {
     if (this.hasValue()) {
         f(this.value);
     }
@@ -406,14 +405,14 @@ Stream.prototype.forEach = function(f) {
 // Stream::addListener(Function f)
 //
 // Add `f` to `this.listeners`.
-Stream.prototype.addListener = function(f) {
+Stream.prototype.addListener = function (f) {
     this.listeners.push(f);
 };
 
 // Stream::removeListener(Function f)
 //
 // Remove the first instance of `f` from `this.listeners`, if it is there.
-Stream.prototype.removeListener = function(f) {
+Stream.prototype.removeListener = function (f) {
     var idx = this.listeners.indexOf(f);
     if (idx !== -1) {
         this.listeners.splice(idx, 1);
@@ -428,7 +427,7 @@ Stream.prototype.removeListener = function(f) {
 // a stream, the resulting stream will update with the returned stream's values.
 //
 // TODO good example
-Stream.prototype.then = function(f) {
+Stream.prototype.then = function (f) {
     if (this.hasEnded()) {
         f(this.value);
         // No need to addEndListener(), since end only happens once
@@ -449,7 +448,7 @@ Stream.prototype.then = function(f) {
 //
 // `Stream::done()` is to `Stream::then` like `Stream::forEach` is to
 // `Stream::map`.
-Stream.prototype.done = function(f) {
+Stream.prototype.done = function (f) {
     // TODO extract this maybe
     if (this.hasEnded()) {
         f(this.value);
@@ -462,7 +461,7 @@ Stream.prototype.done = function(f) {
 // Stream::addEndListener(Function f)
 //
 // Add `f` to `this.endListeners`, which is initialized lazily.
-Stream.prototype.addEndListener = function(f) {
+Stream.prototype.addEndListener = function (f) {
     if (!this.endListeners) {
         this.endListeners = [];
     }
@@ -472,7 +471,7 @@ Stream.prototype.addEndListener = function(f) {
 // Stream::removeEndListener(Function f)
 //
 // Remove listener from `endListeners`.
-Stream.prototype.removeEndListener = function(f) {
+Stream.prototype.removeEndListener = function (f) {
     if (this.endListeners) {
         // TODO refactoring opportunity: extract "remove from array"
         var idx = this.endListeners.indexOf(f);
@@ -504,7 +503,7 @@ Stream.prototype.removeEndListener = function(f) {
 //
 //  s1: 1 1 2 2 5 6 6
 //  s2: 2 2 3 3 6 7 7
-Stream.prototype.map = function(f) {
+Stream.prototype.map = function (f) {
     assertFunction(f);
 
     function mapUpdate(parent) {
@@ -522,7 +521,7 @@ Stream.prototype.map = function(f) {
 //
 //  s1: 1 1 2 2 5 6 6
 //  s2: 1 1     5
-Stream.prototype.filter = function(f) {
+Stream.prototype.filter = function (f) {
     assertFunction(f);
 
     function filterUpdate(parent) {
@@ -549,7 +548,7 @@ Stream.prototype.filter = function(f) {
 //
 //  s1: 1 1 2 2 5 6 6
 //  s2: 1   2   5 6
-Stream.prototype.uniq = function() {
+Stream.prototype.uniq = function () {
     function uniqUpdate(parent) {
         if (this.value !== parent.value) {
             this.newValue(parent.value);
@@ -602,7 +601,7 @@ Stream.prototype.uniq = function() {
 //  s3      1     2        3
 //  s4 []   [1]   [1, 2]   [1, 2, 3]
 //
-Stream.prototype.reduce = function(f, initialValue) {
+Stream.prototype.reduce = function (f, initialValue) {
     assertFunction(f);
 
     function reduceUpdate(parent) {
@@ -613,8 +612,8 @@ Stream.prototype.reduce = function(f, initialValue) {
         }
     }
 
-    return stream(this, { update: reduceUpdate, f: f, value: initialValue })
-}
+    return stream(this, { update: reduceUpdate, f: f, value: initialValue });
+};
 
 // stream.combine(Function f, ...Stream streams) -> Stream
 //
@@ -631,7 +630,7 @@ Stream.prototype.reduce = function(f, initialValue) {
 //  s2: 2 4 3   8
 //  s3: 3       1
 //  s4: 6 8 7 6 9
-stream.combine = function(f) {
+stream.combine = function (f) {
     assertFunction(f);
 
     var sourceStreams = Array(arguments.length - 1);
@@ -640,7 +639,7 @@ stream.combine = function(f) {
     }
 
     function combineUpdate() {
-        var parentValues = this.parents.map(function(parent) {
+        var parentValues = this.parents.map(function (parent) {
             return parent.value;
         });
 
@@ -650,9 +649,7 @@ stream.combine = function(f) {
     return stream(sourceStreams, { update: combineUpdate, f: f });
 };
 
-stream.combineWhenAll = function(f) {
-    // TODO
-};
+stream.combineWhenAll = function (f) {};
 
 // stream.merge(...Stream streams) -> Stream
 //
@@ -669,15 +666,18 @@ stream.combineWhenAll = function(f) {
 // The resulting stream gets its initial value from the parent that was updated
 // most recently (it peeks at the streams' `version` properties and chooses the
 // newest one).
-stream.merge = function() {
+stream.merge = function () {
     var sourceStreams = toArray(arguments);
     // TODO
 };
 
-stream.flatMap = function() {
+stream.flatMap = function () {
     // TODO
     // +Latest
+    var x;
 }
 
 // end of downstream.js
 //# sourceMappingURL=downstream.js.map
+;
+// TODO
