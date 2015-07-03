@@ -1,4 +1,3 @@
-// downstream.js
 //
 // downstream.js
 //
@@ -29,10 +28,9 @@
 //
 
 //
-// 1-stream.js
+// 0-utils.js
 //
-// This file contains the constructor new Stream(), and the equivalent function
-// stream(), along with some debugging tools.
+// This file contains internal utility functions.
 //
 
 // Copy all attributes from 'sources' to 'target'.
@@ -40,14 +38,20 @@
 
 function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = Array(arr.length); i < arr.length; i++) arr2[i] = arr[i]; return arr2; } else { return Array.from(arr); } }
 
-function extend(target /*, ...sources */) {
-    for (var i = 1; i < arguments.length; i++) {
-        if (arguments[i]) {
-            for (var key in arguments[i]) {
-                target[key] = arguments[i][key];
+function extend(target) {
+    for (var _len = arguments.length, sources = Array(_len > 1 ? _len - 1 : 0), _key = 1; _key < _len; _key++) {
+        sources[_key - 1] = arguments[_key];
+    }
+
+    sources.forEach(function (object) {
+        if (object) {
+            for (var key in object) {
+                target[key] = object[key];
             }
         }
-    }
+    });
+
+    return target;
 }
 
 // isArray(object) -> boolean
@@ -94,15 +98,14 @@ function assertActive(stream) {
 // new Stream(
 //  optional Stream parent | Stream[] parents,
 //  optional object options) -> Stream
-function Stream(parentOrParents, options) {
+function Stream() {
     var _this = this;
 
+    var parentOrParents = arguments[0] === undefined ? [] : arguments[0];
+    var options = arguments[1] === undefined ? {} : arguments[1];
+
     // Handle the first argument that can be undefined, Stream or Stream[].
-    if (parentOrParents) {
-        this.parents = isArray(parentOrParents) ? parentOrParents : [parentOrParents];
-    } else {
-        this.parents = [];
-    }
+    this.parents = isArray(parentOrParents) ? parentOrParents : [parentOrParents];
 
     this.children = [];
     this.listeners = [];
@@ -685,8 +688,8 @@ stream.combine = function (f) {
         this.newValue(this.f.apply(this, parentValues));
     }
 
-    for (var _len = arguments.length, streams = Array(_len > 1 ? _len - 1 : 0), _key = 1; _key < _len; _key++) {
-        streams[_key - 1] = arguments[_key];
+    for (var _len2 = arguments.length, streams = Array(_len2 > 1 ? _len2 - 1 : 0), _key2 = 1; _key2 < _len2; _key2++) {
+        streams[_key2 - 1] = arguments[_key2];
     }
 
     return stream(streams, { update: combineUpdate, f: f });
@@ -724,8 +727,8 @@ stream.merge = function () {
     // exists).
     var newestParent;
 
-    for (var _len2 = arguments.length, streams = Array(_len2), _key2 = 0; _key2 < _len2; _key2++) {
-        streams[_key2] = arguments[_key2];
+    for (var _len3 = arguments.length, streams = Array(_len3), _key3 = 0; _key3 < _len3; _key3++) {
+        streams[_key3] = arguments[_key3];
     }
 
     streams.forEach(function (parent) {
@@ -739,7 +742,7 @@ stream.merge = function () {
         value: newestParent && newestParent.value,
         version: newestParent && newestParent.version,
         // The resulting stream will end when all parent streams have ended.
-        parentDone: function parentDone(parent) {
+        parentDone: function parentDone() {
             if (this.parents.every(function (parent) {
                 return parent.hasEnded();
             })) {

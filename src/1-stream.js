@@ -10,15 +10,11 @@
 // new Stream(
 //  optional Stream parent | Stream[] parents,
 //  optional object options) -> Stream
-function Stream(parentOrParents, options) {
+function Stream(parentOrParents = [], options = {}) {
     // Handle the first argument that can be undefined, Stream or Stream[].
-    if (parentOrParents) {
-        this.parents = isArray(parentOrParents)
-            ? parentOrParents
-            : [parentOrParents];
-    } else {
-        this.parents = [];
-    }
+    this.parents = isArray(parentOrParents)
+        ? parentOrParents
+        : [parentOrParents];
 
     this.children = [];
     this.listeners = [];

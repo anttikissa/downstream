@@ -28,21 +28,22 @@
 //
 
 //
-// 1-stream.js
+// 0-utils.js
 //
-// This file contains the constructor new Stream(), and the equivalent function
-// stream(), along with some debugging tools.
+// This file contains internal utility functions.
 //
 
 // Copy all attributes from 'sources' to 'target'.
-function extend(target /*, ...sources */) {
-    for (var i = 1; i < arguments.length; i++) {
-        if (arguments[i]) {
-            for (var key in arguments[i]) {
-                target[key] = arguments[i][key];
+function extend(target, ...sources) {
+    sources.forEach(object => {
+        if (object) {
+            for (var key in object) {
+                target[key] = object[key];
             }
         }
-    }
+    });
+    
+    return target;
 }
 
 // isArray(object) -> boolean

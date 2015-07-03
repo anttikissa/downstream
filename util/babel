@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-// vim: set ft=javascript:
 
 var fs = require('fs');
 var babel = require('babel-core');

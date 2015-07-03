@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-// vim: set ft=javascript:
 
 // Adopted from example at https://www.npmjs.com/package/source-map-concat
 
@@ -45,7 +44,7 @@ var concatenated = concat(jsFiles, {
 	mapPath: output + ".map"
 });
 
-concatenated.prepend("// downstream.js\n");
+// concatenated.prepend("// downstream.js\n");
 concatenated.add("\n// end of downstream.js");
 concatenated.add("\n//# sourceMappingURL=" + targetFile + ".map");
 
