@@ -22,7 +22,6 @@ function Stream(parentOrParents, options) {
 
     this.children = [];
     this.listeners = [];
-    this.version = 0;
     // state is one of 'active', 'ended', or 'error'
     this.state = 'active';
 
@@ -44,6 +43,15 @@ function Stream(parentOrParents, options) {
     if (this.parents.some(hasValue)) {
         this.update.apply(this, this.parents);
     }
+
+    // Calling update above has set `this.version` to `stream.version`. But to
+    // be really pitch-perfect, `this.version` should be as if this stream had
+    // existed when its parents last updated. This is a fine nuance really
+    // (perhaps unnecessarily fine), and only matters when giving related
+    // streams to operators that deeply care about their parents' initial
+    // versions (such as `Stream.merge`).
+
+    this.version = Math.max(...this.parents.map(parent => parent.version));
 }
 
 // Stream::hasValue() -> boolean

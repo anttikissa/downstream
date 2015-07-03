@@ -344,9 +344,28 @@ test('4-stream-operators-test.js', function() {
             assert.is(merged.value, 2);
         });
 
-        test('with three streams', function() {
-            return; // TODO fix when end works
+        test('ends only after all sources are done', function() {
+            var s = stream().set(1);
+            var s2 = stream().set(2);
+            var merged = stream.merge(s, s2);
 
+            var mergedEnded = false;
+
+            // Assert that the `done` callback gets called, too
+            merged.done(function() {
+                mergedEnded = true;
+            });
+
+            s.end();
+            assert(!merged.hasEnded());
+            assert(!mergedEnded);
+
+            s2.end();
+            assert(merged.hasEnded());
+            assert(mergedEnded);
+        });
+
+        test('with three streams', function() {
             var s = stream();
             var s2 = stream();
             var s3 = stream();
@@ -364,12 +383,54 @@ test('4-stream-operators-test.js', function() {
             s.set(3);
             s2.set(4);
             s.end();
-            // TODO the FIRST end() should not end the resulting stream
             s2.end();
             s3.end();
 
             assert(doneCalled);
         });
 
+        test('initial value comes from the newest parent', function() {
+            test('normal case', function() {
+                var s1 = stream().set(1);
+                var s2 = stream().set(2);
+
+                var merged1 = stream.merge(s1, s2);
+                assert.is(merged1.value, 2);
+            });
+
+            test('the same in another order', function() {
+                var s3 = stream().set(3);
+                var s4 = stream().set(4);
+
+                var merged2 = stream.merge(s4, s3);
+                assert.is(merged2.value, 4);
+            });
+
+            test('more complex example with derived streams', function() {
+                // This is a contrived example, probably nothing of the like
+                // will happen in the real world. But here's a test to document
+                // how it happens when it does.
+                var s1 = stream().set(1);
+                var s2 = stream().set(2);
+                // Even though s3 is created later than s2 is set, its version
+                // is same as s1.
+                var s3 = s1.map(function(x) { return x * 10; });
+
+                assert.is(s1.version, s3.version);
+
+                // Therefore s2 is newer.
+                assert(s2.version > s3.version);
+                var merged3 = stream.merge(s1, s2, s3);
+
+                // Initial value comes from s2:
+                assert.is(merged3.value, 2);
+
+                s1.set(3);
+
+                // Now it comes from s3 since it updates at the same time
+                // as s1:
+                assert.is(merged3.value, 30);
+            });
+        });
     })
 });

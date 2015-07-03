@@ -217,7 +217,13 @@ stream.merge = function(...streams) {
     return stream(streams, {
         update: mergeUpdate,
         value: newestParent && newestParent.value,
-        version: newestParent && newestParent.version
+        version: newestParent && newestParent.version,
+        // The resulting stream will end when all parent streams have ended.
+        parentDone: function(parent) {
+            if (this.parents.every(parent => parent.hasEnded())) {
+                this.end();
+            }
+        }
     });
 };
 

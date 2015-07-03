@@ -38,6 +38,8 @@
 // Copy all attributes from 'sources' to 'target'.
 'use strict';
 
+function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = Array(arr.length); i < arr.length; i++) arr2[i] = arr[i]; return arr2; } else { return Array.from(arr); } }
+
 function extend(target /*, ...sources */) {
     for (var i = 1; i < arguments.length; i++) {
         if (arguments[i]) {
@@ -104,7 +106,6 @@ function Stream(parentOrParents, options) {
 
     this.children = [];
     this.listeners = [];
-    this.version = 0;
     // state is one of 'active', 'ended', or 'error'
     this.state = 'active';
 
@@ -126,6 +127,17 @@ function Stream(parentOrParents, options) {
     if (this.parents.some(hasValue)) {
         this.update.apply(this, this.parents);
     }
+
+    // Calling update above has set `this.version` to `stream.version`. But to
+    // be really pitch-perfect, `this.version` should be as if this stream had
+    // existed when its parents last updated. This is a fine nuance really
+    // (perhaps unnecessarily fine), and only matters when giving related
+    // streams to operators that deeply care about their parents' initial
+    // versions (such as `Stream.merge`).
+
+    this.version = Math.max.apply(Math, _toConsumableArray(this.parents.map(function (parent) {
+        return parent.version;
+    })));
 }
 
 // Stream::hasValue() -> boolean
@@ -182,8 +194,11 @@ Stream.prototype.log = function (prefix) {
 //
 // 2-stream-set.js
 //
-// This file contains the method `set()`, and the machinery that is uses to make
-// streams tick.
+// This file contains methods that can be used to modify streams' state:
+//
+// - `Stream::set()` and the associated machinery
+// - `Stream::end()`
+// - TODO eventually `Stream::throw()`
 //
 
 // An increasing number that is incremented every time `Stream::set()` is
@@ -211,7 +226,7 @@ Stream.prototype.wasUpdated = function () {
 // Update stream's value to `value` and set its `.version` to `stream.version`.
 // This marks the stream as updated during this tick.
 //
-// Update functions should use this to set the new value.
+// Update methods should use this to set the new value.
 Stream.prototype.newValue = function (value) {
     this.value = value;
     this.version = stream.version;
@@ -224,7 +239,11 @@ Stream.prototype.newValue = function (value) {
 // Transitively update all streams that depend on this streams. After a stream's
 // value has been updated, call its `forEach` listeners with the new value.
 //
-// Return `this` so you can do things like `s.set(1).forEach(f)`.
+// Return `this` for convenience. For example, to start a stream with a value,
+// you can say:
+//
+//  var s = stream().set(initialValue);
+//
 Stream.prototype.set = function (value) {
     assertActive(this);
 
@@ -298,7 +317,7 @@ stream.updateOrder = function (source) {
 
     // To that end, a loop with a simple check shall do.
     //
-    // TODO This looks like O(n^2), but let's optimize when it starts to matter.
+    // TODO This looks like O(n^2); optimize when it's time
     function isLastIndexOf(node, idx) {
         return dfsTraversalOrder.lastIndexOf(node) === idx;
     }
@@ -317,9 +336,6 @@ stream.updateOrder = function (source) {
 //
 // Declares that this stream has done its business, and that its final value is
 // `this.value`.
-//
-// `Stream::end()` is to `Stream::then` and `Stream::done` what
-// `Stream::set()` is to `Stream::forEach`.
 //
 // Ending a stream consists of three steps:
 //
@@ -350,10 +366,20 @@ Stream.prototype.end = function () {
     this.children.forEach(function (child) {
         // Maybe child.parentHasEnded(this)
         // so they can override the ending behavior
-        child.end();
+        child.parentDone(_this2);
     });
 
     this.children = [];
+};
+
+// Stream::parentDone(Stream parent)
+//
+// Inform the stream that its parent `parent` is done. The default behavior is
+// to end the child as well. Streams that don't need this behavior should
+// override `parentDone()` to do the right thing (e.g. `stream.merge` only ends
+// after all of its parents have ended).
+Stream.prototype.parentDone = function (parent) {
+    this.end();
 };
 
 //
@@ -702,7 +728,15 @@ stream.merge = function () {
     return stream(streams, {
         update: mergeUpdate,
         value: newestParent && newestParent.value,
-        version: newestParent && newestParent.version
+        version: newestParent && newestParent.version,
+        // The resulting stream will end when all parent streams have ended.
+        parentDone: function parentDone(parent) {
+            if (this.parents.every(function (parent) {
+                return parent.hasEnded();
+            })) {
+                this.end();
+            }
+        }
     });
 };
 
