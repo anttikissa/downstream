@@ -6,6 +6,20 @@ test('2-stream-set-test.js', function() {
             assert.is(s.value, 123);
         });
 
+        test('sets the version', function() {
+            var s = stream();
+            s.set(123);
+            assert(s.version > 0);
+        });
+
+        test('updates the version', function() {
+            var s = stream();
+            s.set(123);
+            var oldVersion = s.version;
+            s.set(234);
+            assert(s.version > oldVersion);
+        });
+
         test('fails if stream not active', function() {
             var s = stream();
             s.end();

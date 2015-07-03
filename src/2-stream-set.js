@@ -14,8 +14,13 @@
 // All streams that are updated as result will get their `.version` bumped to
 // the new value.
 //
+// Every stream starts with its version set to 0, regardless of whether it has
+// an initial value; it becomes nonzero when `set()` is called on the stream, or
+// when it is updated as the result of one of its parents updating.
+//
 // `Stream::wasUpdated()` uses the version to determine if stream was
-// changed during this tick.
+// changed during the most recent tick.
+//
 stream.version = 0;
 
 // Stream::wasUpdated() -> boolean

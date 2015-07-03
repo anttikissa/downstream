@@ -116,28 +116,32 @@ function Stream(parentOrParents, options) {
         parent.addChild(_this);
     });
 
-    extend(this, options);
+    this.version = 0;
 
-    function hasValue(parent) {
-        return parent.hasValue();
-    }
+    extend(this, options);
 
     // Handle the initial value: if some of my parents had a value, then run
     // the update function to potentially give this stream a value, too.
-    if (this.parents.some(hasValue)) {
+    if (this.parents.some(function (parent) {
+        return parent.hasValue();
+    })) {
         this.update.apply(this, this.parents);
+
+        // Calling update above has set `this.version` to `stream.version`. But to
+        // be really pitch-perfect, `this.version` should be as if this stream had
+        // existed when its parents last updated. This is a fine nuance really
+        // (perhaps unnecessarily fine), and only matters when giving related
+        // streams to operators that deeply care about their parents' initial
+        // versions (such as `Stream.merge`).
+
+        // this.version is nonzero only if the `update` call above resulted in
+        // `newValue()` being called.
+        if (this.version > 0) {
+            this.version = Math.max.apply(Math, _toConsumableArray(this.parents.map(function (parent) {
+                return parent.version;
+            })));
+        }
     }
-
-    // Calling update above has set `this.version` to `stream.version`. But to
-    // be really pitch-perfect, `this.version` should be as if this stream had
-    // existed when its parents last updated. This is a fine nuance really
-    // (perhaps unnecessarily fine), and only matters when giving related
-    // streams to operators that deeply care about their parents' initial
-    // versions (such as `Stream.merge`).
-
-    this.version = Math.max.apply(Math, _toConsumableArray(this.parents.map(function (parent) {
-        return parent.version;
-    })));
 }
 
 // Stream::hasValue() -> boolean
@@ -207,8 +211,13 @@ Stream.prototype.log = function (prefix) {
 // All streams that are updated as result will get their `.version` bumped to
 // the new value.
 //
+// Every stream starts with its version set to 0, regardless of whether it has
+// an initial value; it becomes nonzero when `set()` is called on the stream, or
+// when it is updated as the result of one of its parents updating.
+//
 // `Stream::wasUpdated()` uses the version to determine if stream was
-// changed during this tick.
+// changed during the most recent tick.
+//
 stream.version = 0;
 
 // Stream::wasUpdated() -> boolean

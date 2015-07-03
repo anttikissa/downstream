@@ -153,6 +153,42 @@ test('4-stream-operators-test.js', function() {
             assert.is(sum.value, 13);
         });
 
+        test('version of reduced stream', function() {
+            // These tests illustrate that if the reduced stream starts with an
+            // initial value, its version will be the parent's version only
+            // if the initial value comes from the parent.
+            test('is zero if no value', function() {
+                // dug
+                var s = stream();
+                var s2 = s.reduce(inc);
+                assert.is(s2.value, undefined);
+                assert.is(s2.version, 0);
+            });
+            
+            test('is zero if parent has no value', function() {
+                var letters = stream();
+                var result = letters.reduce(plus, '');
+                assert.is(result.value, '');
+                assert.is(result.version, 0);
+            });
+
+            test('is nonzero if parent has a value', function() {
+                var numbers = stream().set(1);
+                var result = numbers.reduce(plus);
+                assert.is(result.value, 1);
+                assert(result.version > 0);
+                assert.is(result.version, numbers.version);
+            });
+
+            test('is nonzero if parent has value and have initial', function() {
+                var numbers = stream().set(1);
+                var result = numbers.reduce(plus, 1);
+                assert.is(result.value, 2);
+                assert(result.version > 0);
+                assert.is(result.version, numbers.version);
+            });
+        });
+
         test('ends when the parent ends', function() {
             var numbers = stream().set(1);
             var sum = numbers.reduce(plus);
@@ -311,6 +347,41 @@ test('4-stream-operators-test.js', function() {
 
         test('end() works properly with diamond-like dependency structure', function() {
             // TODO it's likely that in fact it does not
+        });
+    });
+
+    // Now that we have the ammunition (filter, map, and combine), we can finally
+    // test that the .version of a newly created stream gets set properly:
+    test('stream(parent) sets version properly', function() {
+        test('when the stream gets a value when created', function() {
+            var parent = stream().set(1);
+            var mapped = parent.map(inc);
+            assert.is(parent.version, mapped.version);
+        });
+
+        test("when the stream doesn't get a value when created", function() {
+            var parent = stream().set(2);
+            var mapped = parent.filter(isOdd);
+            assert(parent.version > 0);
+            // Doesn't get a value...
+            assert.is(mapped.value, undefined);
+            // ...doesn't get a version, either.
+            assert.is(mapped.version, 0);
+        });
+
+        test('when the stream has multiple parents', function() {
+            var parent1 = stream();
+            var parent2 = stream();
+            var parent3 = stream();
+
+            parent1.set(1);
+            parent3.set(3);
+            parent2.set(2);
+            assert(parent2.version > parent3.version);
+            assert(parent3.version > parent1.version);
+
+            var sum = stream.combine(plusThree, parent1, parent2, parent3);
+            assert.is(sum.version, parent2.version);
         });
     });
 

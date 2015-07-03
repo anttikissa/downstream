@@ -1,10 +1,12 @@
 test('1-stream-test.js', function() {
-
     test('stream()', function() {
-        var s = stream();
-        assert(s.value === undefined);
-        assert.eq(s.parents, []);
-        assert.eq(s.children, []);
+        test('basic functionality', function() {
+            var s = stream();
+            assert.is(s.value, undefined);
+            assert.is(s.version, 0);
+            assert.eq(s.parents, []);
+            assert.eq(s.children, []);
+        });
     });
 
     test('Stream::update() when not overridden', function() {
@@ -18,5 +20,4 @@ test('1-stream-test.js', function() {
             parent.set(1);
         }, 'Stream does not define update()');
     });
-
 });
