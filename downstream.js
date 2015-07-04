@@ -81,6 +81,15 @@ function assertActive(stream) {
     }
 }
 
+// assertSource(Stream stream)
+//
+// Throw user-readable error if `stream` is not a source stream
+function assertSourceStream(stream) {
+    if (stream.update !== Stream.prototype.update) {
+        throw new Error('stream is not a source stream');
+    }
+}
+
 //
 // 1-stream.js
 //
@@ -183,8 +192,7 @@ Stream.prototype.addChild = function (child) {
 
 // It's an error if a stream that doesn't have an `update` function gets
 // updated; the default implementation ensures that you get this message instead
-// of "Cannot read property 'apply' of undefined" or equivalent
-//
+// of "Cannot read property 'apply' of undefined" or equivalent.
 Stream.prototype.update = function () {
     throw new Error('Stream does not define update()');
 };
@@ -271,6 +279,7 @@ Stream.prototype.newValue = function (value) {
 //
 Stream.prototype.set = function (value) {
     assertActive(this);
+    assertSourceStream(this);
 
     stream.version++;
 

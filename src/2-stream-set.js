@@ -58,6 +58,7 @@ Stream.prototype.newValue = function(value) {
 //
 Stream.prototype.set = function(value) {
     assertActive(this);
+    assertSourceStream(this);
 
     stream.version++;
 

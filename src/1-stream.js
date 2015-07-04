@@ -91,8 +91,7 @@ Stream.prototype.addChild = function(child) {
 
 // It's an error if a stream that doesn't have an `update` function gets
 // updated; the default implementation ensures that you get this message instead
-// of "Cannot read property 'apply' of undefined" or equivalent
-//
+// of "Cannot read property 'apply' of undefined" or equivalent.
 Stream.prototype.update = function() {
     throw new Error('Stream does not define update()');
 };

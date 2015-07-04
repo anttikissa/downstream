@@ -28,9 +28,17 @@ test('2-stream-set-test.js', function() {
                 s.set(123);
             }, "stream is in state 'ended', should be 'active'");
         });
+
+        test('fails if stream not a source stream', function() {
+            var s = stream();
+            var s2 = s.map(function() { return 1; });
+            assert.throws(function() {
+                s2.set(2);
+            }, 'stream is not a source stream');
+        });
     });
 
-    // TODO updateOrder etc.
+    // TODO test updateOrder
 
     test('Stream::end()', function() {
         test('sets the stream to ended state', function() {

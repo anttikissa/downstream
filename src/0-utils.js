@@ -73,3 +73,12 @@ function assertActive(stream) {
             + "', should be 'active'");
     }
 }
+
+// assertSource(Stream stream)
+//
+// Throw user-readable error if `stream` is not a source stream
+function assertSourceStream(stream) {
+    if (stream.update !== Stream.prototype.update) {
+        throw new Error("stream is not a source stream");
+    }
+}
