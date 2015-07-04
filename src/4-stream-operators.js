@@ -27,7 +27,7 @@ Stream.prototype.map = function(f) {
         this.newValue(this.f(parent.value));
     }
 
-    return stream(this, { update: mapUpdate, f: f });
+    return stream(this, { update: mapUpdate, f });
 };
 
 // Stream::filter(Function f) -> Stream
@@ -47,7 +47,7 @@ Stream.prototype.filter = function(f) {
         }
     }
 
-    return stream(this, { update: filterUpdate, f: f });
+    return stream(this, { update: filterUpdate, f });
 };
 
 // Stream::uniq() -> Stream
@@ -129,7 +129,7 @@ Stream.prototype.reduce = function(f, initialValue) {
         }
     }
 
-    return stream(this, { update: reduceUpdate, f: f, value: initialValue })
+    return stream(this, { update: reduceUpdate, f, value: initialValue });
 }
 
 // Stream::collect() -> Stream
