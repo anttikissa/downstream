@@ -715,7 +715,7 @@ stream.combineWhenAll = function (f) {
         streams[_key3 - 1] = arguments[_key3];
     }
 
-    return stream(streams, { update: combineWhenAll });
+    return stream(streams, { update: combineWhenAllUpdate, f: f });
 };
 
 // stream.merge(...Stream streams) -> Stream

@@ -405,8 +405,30 @@ test('4-stream-operators-test.js', function() {
         });
     });
 
-    test('stream.combineWhenAll', function() {
-        // TODO
+    test('stream.combineWhenAll()', function() {
+        test('gets value only after all parents have value', function() {
+            var s1 = stream();
+            var s2 = stream().set(2);
+            var s3 = stream();
+
+            var sum = stream.combineWhenAll(plusThree, s1, s2, s3);
+            assert(!sum.hasValue());
+            s1.set(1);
+            assert(!sum.hasValue());
+            s3.set(3);
+            assert(sum.hasValue());
+            assert.is(sum.value, 6);
+        });
+
+        test('ends when one parent stream ends', function() {
+            var s1 = stream();
+            var s2 = stream().set(1);
+            var sum = stream.combineWhenAll(plus, s1, s2);
+            assert(!sum.hasEnded());
+            s1.end();
+            assert(sum.hasEnded());
+            assert(!sum.hasValue());
+        });
     });
 
     test('error messages when passing in a non-function', function() {

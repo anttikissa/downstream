@@ -171,7 +171,7 @@ stream.combine = function(f, ...streams) {
         this.newValue(this.f(...parentValues));
     }
 
-    return stream(streams, { update: combineUpdate, f: f });
+    return stream(streams, { update: combineUpdate, f });
 };
 
 stream.combineWhenAll = function(f, ...streams) {
@@ -184,7 +184,7 @@ stream.combineWhenAll = function(f, ...streams) {
         }
     }
 
-    return stream(streams, { update: combineWhenAll})
+    return stream(streams, { update: combineWhenAllUpdate, f });
 };
 
 // stream.merge(...Stream streams) -> Stream
