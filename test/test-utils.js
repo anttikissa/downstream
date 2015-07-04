@@ -30,7 +30,12 @@ function test(what, f) {
     log(Array(depth + 1).join('| ') + what);
     depth++;
     if (f) {
-        f();
+        try {
+            f();
+        } catch (err) {
+            failed = true;
+            throw err;
+        }
     }
     depth--;
 }
