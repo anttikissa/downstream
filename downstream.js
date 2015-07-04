@@ -54,17 +54,12 @@ function extend(target) {
     return target;
 }
 
-// isArray(object) -> boolean
-//
-// Is `object` an array?
-function isArray(object) {
-    return Array.isArray(object);
-}
-
 // defer(Function f)
 //
+// TODO use me
+//
 // Call 'f' a bit later.
-var defer = typeof setImmediate === 'function' ? setImmediate : setTimeout;
+// var defer = typeof setImmediate === 'function' ? setImmediate : setTimeout;
 
 // Type-checking utilities
 
@@ -95,17 +90,36 @@ function assertActive(stream) {
 
 // Create a stream.
 //
+// There are two different ways to create stream:
+//
+// new Stream() -> Stream                      // create a source stream
+//
 // new Stream(
 //  optional Stream parent | Stream[] parents,
-//  optional object options) -> Stream
+//  optional object options) -> Stream         // create a derived stream
+//
+// The first form creates a *source stream*: a stream that you can use as a
+// parent for derived streams, and whose value you can update with `.set()`.
+//
+// The second form creates a *derived stream*: a stream that can react to its
+// parents' updates by having its `.update()` method called.
+//
+// You can listen to changes in both kinds of streams; the difference is that
+// calling '.set()' is allowed only for source streams, and defining `.update()`
+// is only allowed for derived streams. In practice, the presence of `.update()`
+// determines the stream.
+//
+// The constructor creates parent-child links between its parents and the newly
+// created stream, initializes itself, extends itself with `options`, and
+// finally establishes the initial value.
 function Stream() {
     var _this = this;
 
     var parentOrParents = arguments[0] === undefined ? [] : arguments[0];
     var options = arguments[1] === undefined ? {} : arguments[1];
 
-    // Handle the first argument that can be undefined, Stream or Stream[].
-    this.parents = isArray(parentOrParents) ? parentOrParents : [parentOrParents];
+    // This lets you use both `[parent1, parent2, ...]` and `parent`
+    this.parents = [].concat(parentOrParents);
 
     this.children = [];
     this.listeners = [];
@@ -123,23 +137,22 @@ function Stream() {
 
     extend(this, options);
 
-    // Handle the initial value: if some of my parents had a value, then run
+    // Establish the initial value: if some of my parents had a value, then run
     // the update function to potentially give this stream a value, too.
     if (this.parents.some(function (parent) {
         return parent.hasValue();
     })) {
-        this.update.apply(this, this.parents);
+        this.update.apply(this, _toConsumableArray(this.parents));
 
-        // Calling update above has set `this.version` to `stream.version`. But to
-        // be really pitch-perfect, `this.version` should be as if this stream had
-        // existed when its parents last updated. This is a fine nuance really
-        // (perhaps unnecessarily fine), and only matters when giving related
-        // streams to operators that deeply care about their parents' initial
-        // versions (such as `Stream.merge`).
-
-        // this.version is nonzero only if the `update` call above resulted in
-        // `newValue()` being called.
+        // If the update call above did set a value, it also set `this.version`
+        // to `stream.version`, which is nonzero.
         if (this.version > 0) {
+            // But what we actually want for `this.version` is the version of
+            // the most recently updated parent, as if this stream had been
+            // around when it updated. This is a fine nuance really (perhaps
+            // unnecessarily fine), and only matters when giving related streams
+            // to operators that care about their parents' initial versions
+            // (such as `Stream.merge`).
             this.version = Math.max.apply(Math, _toConsumableArray(this.parents.map(function (parent) {
                 return parent.version;
             })));

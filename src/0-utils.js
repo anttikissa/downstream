@@ -42,21 +42,16 @@ function extend(target, ...sources) {
             }
         }
     });
-    
-    return target;
-}
 
-// isArray(object) -> boolean
-//
-// Is `object` an array?
-function isArray(object) {
-	return Array.isArray(object);
+    return target;
 }
 
 // defer(Function f)
 //
+// TODO use me
+//
 // Call 'f' a bit later.
-var defer = typeof setImmediate === 'function' ? setImmediate : setTimeout;
+// var defer = typeof setImmediate === 'function' ? setImmediate : setTimeout;
 
 // Type-checking utilities
 
