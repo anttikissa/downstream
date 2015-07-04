@@ -56,7 +56,7 @@ function Stream(parentOrParents = [], options = {}) {
 //
 // Does this stream have a value?
 Stream.prototype.hasValue = function() {
-    return typeof this.value !== 'undefined';
+    return this.value !== undefined;
 };
 
 // Stream::hasEnded() -> boolean

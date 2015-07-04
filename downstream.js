@@ -151,7 +151,7 @@ function Stream() {
 //
 // Does this stream have a value?
 Stream.prototype.hasValue = function () {
-    return typeof this.value !== 'undefined';
+    return this.value !== undefined;
 };
 
 // Stream::hasEnded() -> boolean
@@ -358,12 +358,15 @@ stream.updateOrder = function (source) {
 // After children and listeners have been informed, this stream doesn't need a
 // reference to them any more, so delete those links.
 //
+// Calling `.end()` on an ended stream has no effect.
+//
 // If you want to end a stream with a value, call `this.set(finalValue)` first.
 Stream.prototype.end = function () {
     var _this2 = this;
 
-    // TODO make sure this is necessary
-    assertActive(this);
+    if (this.state === 'ended') {
+        return;
+    }
 
     this.state = 'ended';
 
@@ -684,8 +687,7 @@ stream.combine = function (f) {
         var parentValues = this.parents.map(function (parent) {
             return parent.value;
         });
-
-        this.newValue(this.f.apply(this, parentValues));
+        this.newValue(this.f.apply(this, _toConsumableArray(parentValues)));
     }
 
     for (var _len2 = arguments.length, streams = Array(_len2 > 1 ? _len2 - 1 : 0), _key2 = 1; _key2 < _len2; _key2++) {
@@ -695,7 +697,26 @@ stream.combine = function (f) {
     return stream(streams, { update: combineUpdate, f: f });
 };
 
-stream.combineWhenAll = function (f) {};
+stream.combineWhenAll = function (f) {
+    assertFunction(f);
+
+    function combineWhenAllUpdate() {
+        var parentValues = this.parents.map(function (parent) {
+            return parent.value;
+        });
+        if (parentValues.every(function (value) {
+            return value !== undefined;
+        })) {
+            this.newValue(this.f.apply(this, _toConsumableArray(parentValues)));
+        }
+    }
+
+    for (var _len3 = arguments.length, streams = Array(_len3 > 1 ? _len3 - 1 : 0), _key3 = 1; _key3 < _len3; _key3++) {
+        streams[_key3 - 1] = arguments[_key3];
+    }
+
+    return stream(streams, { update: combineWhenAll });
+};
 
 // stream.merge(...Stream streams) -> Stream
 //
@@ -727,8 +748,8 @@ stream.merge = function () {
     // exists).
     var newestParent;
 
-    for (var _len3 = arguments.length, streams = Array(_len3), _key3 = 0; _key3 < _len3; _key3++) {
-        streams[_key3] = arguments[_key3];
+    for (var _len4 = arguments.length, streams = Array(_len4), _key4 = 0; _key4 < _len4; _key4++) {
+        streams[_key4] = arguments[_key4];
     }
 
     streams.forEach(function (parent) {
@@ -761,4 +782,3 @@ stream.flatMap = function () {
 // end of downstream.js
 //# sourceMappingURL=downstream.js.map
 ;
-// TODO

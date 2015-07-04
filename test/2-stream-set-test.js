@@ -43,13 +43,17 @@ test('2-stream-set-test.js', function() {
             assert(s.hasEnded());
         });
 
-        test('fail if stream not active', function() {
+        test('can be called twice, but end listener is only called once', function() {
             var s = stream();
+            var doneCalled = 0;
+            s.done(function() {
+                doneCalled++;
+            });
+            assert.is(doneCalled, 0);
             s.end();
-
-            assert.throws(function() {
-                s.end();
-            }, "stream is in state 'ended', should be 'active'");
+            assert.is(doneCalled, 1);
+            s.end();
+            assert.is(doneCalled, 1);
         });
     });
 });

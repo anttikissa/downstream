@@ -164,7 +164,7 @@ test('4-stream-operators-test.js', function() {
                 assert.is(s2.value, undefined);
                 assert.is(s2.version, 0);
             });
-            
+
             test('is zero if parent has no value', function() {
                 var letters = stream();
                 var result = letters.reduce(plus, '');
@@ -320,6 +320,26 @@ test('4-stream-operators-test.js', function() {
             assert.is(s.value, undefined);
         });
 
+        test('ends when one of parent streams ends', function() {
+            var s1 = stream().set(1);
+            var s2 = stream().set(2);
+
+            var sum = stream.combine(plus, s1, s2);
+
+            assert.is(sum.value, 3);
+
+            var doneCalled = 0;
+            sum.done(function() {
+                doneCalled++;
+            });
+            s2.end();
+            assert.is(doneCalled, 1);
+
+            s1.end();
+            assert.is(doneCalled, 1);
+
+        });
+
         test('combining mapped streams', function() {
             var source = stream();
 
@@ -383,6 +403,10 @@ test('4-stream-operators-test.js', function() {
             var sum = stream.combine(plusThree, parent1, parent2, parent3);
             assert.is(sum.version, parent2.version);
         });
+    });
+
+    test('stream.combineWhenAll', function() {
+        // TODO
     });
 
     test('error messages when passing in a non-function', function() {

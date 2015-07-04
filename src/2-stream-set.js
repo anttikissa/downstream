@@ -158,10 +158,13 @@ stream.updateOrder = function(source) {
 // After children and listeners have been informed, this stream doesn't need a
 // reference to them any more, so delete those links.
 //
+// Calling `.end()` on an ended stream has no effect.
+//
 // If you want to end a stream with a value, call `this.set(finalValue)` first.
 Stream.prototype.end = function() {
-    // TODO make sure this is necessary
-    assertActive(this);
+    if (this.state === 'ended') {
+        return;
+    }
 
     this.state = 'ended';
 

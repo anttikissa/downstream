@@ -167,18 +167,24 @@ stream.combine = function(f, ...streams) {
     assertFunction(f);
 
     function combineUpdate() {
-        var parentValues = this.parents.map(function(parent) {
-            return parent.value;
-        });
-
-        this.newValue(this.f.apply(this, parentValues));
+        var parentValues = this.parents.map(parent => parent.value);
+        this.newValue(this.f(...parentValues));
     }
 
     return stream(streams, { update: combineUpdate, f: f });
 };
 
-stream.combineWhenAll = function(f) {
-    // TODO
+stream.combineWhenAll = function(f, ...streams) {
+    assertFunction(f);
+
+    function combineWhenAllUpdate() {
+        var parentValues = this.parents.map(parent => parent.value);
+        if (parentValues.every(value => value !== undefined)) {
+            this.newValue(this.f(...parentValues));
+        }
+    }
+
+    return stream(streams, { update: combineWhenAll})
 };
 
 // stream.merge(...Stream streams) -> Stream
