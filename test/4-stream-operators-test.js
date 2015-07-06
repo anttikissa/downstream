@@ -597,5 +597,22 @@ test('4-stream-operators-test.js', function() {
                 + ' no effect');
             assert.is(allValues.value, 2);
         });
+
+        test('a perverse case with related streams', function() {
+            var s = stream();
+            // Ensure that streams yielded by `f` are updated at the same tick.
+            var s1 = s.map(inc);
+            var s2 = s.map(function(x) { return x * 10; });
+            var streams = [s1, s2];
+
+            var allValues = s.flatMap(function(idx) {
+                return streams[idx];
+            });
+
+            s.set(0);
+            assert.is(allValues.value, 1);
+            s.set(1);
+            assert.is(allValues.value, 10);
+        });
     });
 });

@@ -278,13 +278,22 @@ Stream.prototype.flatMap = function(f) {
         // The rest, `parents`, are the results of `f(x)` where `x` is a value
         // of `metaParent`. They are the stream's "real" parents in the sense
         // that it's only them that cause the flatMapped stream to update.
+        parents.forEach(parent => {
+            if (parent.wasUpdated()) {
+                this.newValue(parent.value);
+                this.mostRecentParentVersion = parent.version;
+            }
+        });
+
+        // Handle the first parent after the regular parents have been checked,
+        // since it might add another parent which can also change my value.
         if (metaParent.wasUpdated()) {
             // Add a new parent. If its value is newer than my previous parents'
             // most recent value, take its value, too.
             var newParent = this.f(metaParent.value);
             this.addParent(newParent);
 
-            if (newParent.version > this.mostRecentParentVersion) {
+            if (newParent.version >= this.mostRecentParentVersion) {
                 this.newValue(newParent.value);
                 // `mostRecentParentVersion` is the maximum version of any
                 // parents I have now or have ever had, except for `metaParent`.
@@ -296,16 +305,8 @@ Stream.prototype.flatMap = function(f) {
                 this.mostRecentParentVersion = newParent.version;
             }
         }
-
-        parents.forEach(parent => {
-            if (parent.wasUpdated()) {
-                this.newValue(parent.value);
-                this.mostRecentParentVersion = parent.version;
-            }
-        });
     };
 
-    // The stream initially has no parents.
     return stream(this, {
         update: flatMapUpdate,
         f,

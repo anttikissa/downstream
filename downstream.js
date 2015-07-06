@@ -855,6 +855,10 @@ Stream.prototype.flatMap = function (f) {
     function flatMapUpdate(metaParent) {
         var _this4 = this;
 
+        for (var _len5 = arguments.length, parents = Array(_len5 > 1 ? _len5 - 1 : 0), _key5 = 1; _key5 < _len5; _key5++) {
+            parents[_key5 - 1] = arguments[_key5];
+        }
+
         // flatMap is different from most streams in that it has two kinds of
         // parents. The first one we call `metaParent`, and it's the one that
         // `.flatMap()` was originally called on - the stream whose updates
@@ -863,13 +867,22 @@ Stream.prototype.flatMap = function (f) {
         // The rest, `parents`, are the results of `f(x)` where `x` is a value
         // of `metaParent`. They are the stream's "real" parents in the sense
         // that it's only them that cause the flatMapped stream to update.
+        parents.forEach(function (parent) {
+            if (parent.wasUpdated()) {
+                _this4.newValue(parent.value);
+                _this4.mostRecentParentVersion = parent.version;
+            }
+        });
+
+        // Handle the first parent after the regular parents have been checked,
+        // since it might add another parent which can also change my value.
         if (metaParent.wasUpdated()) {
             // Add a new parent. If its value is newer than my previous parents'
             // most recent value, take its value, too.
             var newParent = this.f(metaParent.value);
             this.addParent(newParent);
 
-            if (newParent.version > this.mostRecentParentVersion) {
+            if (newParent.version >= this.mostRecentParentVersion) {
                 this.newValue(newParent.value);
                 // `mostRecentParentVersion` is the maximum version of any
                 // parents I have now or have ever had, except for `metaParent`.
@@ -881,20 +894,8 @@ Stream.prototype.flatMap = function (f) {
                 this.mostRecentParentVersion = newParent.version;
             }
         }
-
-        for (var _len5 = arguments.length, parents = Array(_len5 > 1 ? _len5 - 1 : 0), _key5 = 1; _key5 < _len5; _key5++) {
-            parents[_key5 - 1] = arguments[_key5];
-        }
-
-        parents.forEach(function (parent) {
-            if (parent.wasUpdated()) {
-                _this4.newValue(parent.value);
-                _this4.mostRecentParentVersion = parent.version;
-            }
-        });
     };
 
-    // The stream initially has no parents.
     return stream(this, {
         update: flatMapUpdate,
         f: f,
