@@ -187,6 +187,16 @@ stream.combineWhenAll = function(f, ...streams) {
     return stream(streams, { update: combineWhenAllUpdate, f });
 };
 
+// Stream::endStreamIfAllParentsEnded()
+//
+// Can be used to replace Stream::parentDone for streams that must stay active
+// until the last parent is done.
+Stream.prototype.endStreamIfAllParentsEnded = function() {
+    if (this.parents.every(parent => parent.hasEnded())) {
+        this.end();
+    }
+}
+
 // stream.merge(...Stream streams) -> Stream
 //
 // A stream of `x` for every updating parent's value `x`
@@ -224,12 +234,7 @@ stream.merge = function(...streams) {
         update: mergeUpdate,
         value: newestParent && newestParent.value,
         version: newestParent && newestParent.version,
-        // The resulting stream will end when all parent streams have ended.
-        parentDone: function() {
-            if (this.parents.every(parent => parent.hasEnded())) {
-                this.end();
-            }
-        }
+        parentDone: Stream.prototype.endStreamIfAllParentsEnded
     });
 };
 
@@ -310,6 +315,7 @@ Stream.prototype.flatMap = function(f) {
     return stream(this, {
         update: flatMapUpdate,
         f,
-        mostRecentParentVersion: 0
+        mostRecentParentVersion: 0,
+        parentDone: Stream.prototype.endStreamIfAllParentsEnded
     });
 };

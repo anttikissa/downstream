@@ -614,5 +614,59 @@ test('4-stream-operators-test.js', function() {
             s.set(1);
             assert.is(allValues.value, 10);
         });
+
+        test('flatMapped stream ends properly', function() {
+            test('with no values in the original stream', function() {
+                var s = stream();
+                var flatMapped = s.flatMap(function() { return stream(); });
+                assert(!flatMapped.hasEnded());
+                s.end();
+                assert(flatMapped.hasEnded());
+                assert.is(flatMapped.value, undefined);
+            });
+
+            test('with one value, whose stream ends before the original '
+                + 'stream ends', function() {
+                var s = stream();
+                var s1 = stream();
+                var flatMapped = s.flatMap(function() { return s1; });
+
+                s.set(1);
+                s1.end();
+                assert(!flatMapped.hasEnded());
+                s.end();
+                assert(flatMapped.hasEnded());
+            });
+
+            test('with various streams ending and new streams coming in', function() {
+                var s = stream();
+                var streams = [stream().set(1), stream().set(2)];
+
+                var allValues = s.flatMap(function(idx) {
+                    return streams[idx];
+                });
+
+                s.set(0);
+                assert(allValues.parents[1] === streams[0]);
+                test('ending one followed stream does not end the stream');
+                streams[0].end();
+                assert(!allValues.hasEnded());
+
+                test('ending the source stream does not end the stream');
+                // at least if there is at least one other parent alive
+                s.set(1);
+                s.end();
+                assert(!allValues.hasEnded());
+
+                test('ending the final followed stream ends the stream');
+                streams[1].end();
+                assert(allValues.hasEnded());
+            });
+
+            test('deletes streams from .parents when they end', function() {
+                // TODO
+            });
+
+        });
     });
 });
