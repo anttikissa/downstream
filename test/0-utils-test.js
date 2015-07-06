@@ -20,4 +20,16 @@ test('0-utils-test.js', function() {
             x: 2, y: 4, z: 5
         });
     });
+
+    test('removeFirst()', function() {
+        var a = [1, 2, 3, 2, 4, 2];
+        removeFirst(a, 2);
+        assert.eq(a, [1, 3, 2, 4, 2]);
+        removeFirst(a, 2);
+        assert.eq(a, [1, 3, 4, 2]);
+        removeFirst(a, 2);
+        assert.eq(a, [1, 3, 4]);
+        removeFirst(a, 2);
+        assert.eq(a, [1, 3, 4]);
+    });
 });

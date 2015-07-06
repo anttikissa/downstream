@@ -549,5 +549,53 @@ test('4-stream-operators-test.js', function() {
                 assert.is(merged3.value, 30);
             });
         });
-    })
+    });
+
+    // Meta-operators
+
+    test('Stream::flatMap()', function() {
+        test('simple case', function() {
+            var s = stream();
+            var streams = [stream(), stream()];
+
+            var allValues = s.flatMap(function(idx) {
+                return streams[idx];
+            });
+
+            s.set(0);
+            assert.is(allValues.value, undefined);
+            streams[0].set(1);
+            assert.is(allValues.value, 1);
+            s.set(1);
+            assert.is(allValues.value, 1);
+            streams[1].set(2);
+            assert.is(allValues.value, 2);
+            streams[0].set(3);
+            assert.is(allValues.value, 3);
+        });
+
+        test('with f() that returns streams that already have values', function() {
+            var s = stream();
+            var streams = [stream(), stream(), stream()];
+
+            streams[0].set(1);
+            streams[2].set(3);
+            streams[1].set(2);
+
+            var allValues = s.flatMap(function(idx) {
+                return streams[idx];
+            });
+
+            s.set(0);
+            assert.is(allValues.value, 1);
+
+            s.set(1);
+            assert.is(allValues.value, 2);
+
+            s.set(2);
+            test('the new stream has an older value than the previous one - '
+                + ' no effect');
+            assert.is(allValues.value, 2);
+        });
+    });
 });

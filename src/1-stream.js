@@ -57,12 +57,10 @@ function Stream(parentOrParents = [], options = {}) {
         // If the update call above did set a value, it also set `this.version`
         // to `stream.version`, which is nonzero.
         if (this.version > 0) {
-            // But what we actually want for `this.version` is the version of
-            // the most recently updated parent, as if this stream had been
-            // around when it updated. This is a fine nuance really (perhaps
-            // unnecessarily fine), and only matters when giving related streams
-            // to operators that care about their parents' initial versions
-            // (such as `Stream.merge`).
+            // Pretend that this stream was around when its parents where last
+            // updated, and that this stream was updated at the same tick. This
+            // is necessary because some operators (e.g. `stream.merge(...)`)
+            // want to know which stream is newer.
             this.version = Math.max(...this.parents.map(parent => parent.version));
         }
     }
@@ -84,10 +82,27 @@ Stream.prototype.hasEnded = function() {
 
 // Stream::addChild(Stream child)
 //
-// Register `child` as my child
+// Register `child` as my child. The child calls this when it's created.
 Stream.prototype.addChild = function(child) {
     this.children.push(child);
 };
+
+// Stream::removeChild(Stream child)
+//
+// Unregister `child`. The child calls this near the end of its life.
+Stream.prototype.removeChild = function(child) {
+    removeFirst(this.children, child);
+};
+
+// Stream::addParent(Stream parent)
+//
+// Establish a parent-child relationship between me and `parent`. The child
+// calls this when it needs to listen to a new parent, often from the `update`
+// method.
+Stream.prototype.addParent = function(parent) {
+    this.parents.push(parent);
+    parent.addChild(this);
+}
 
 // It's an error if a stream that doesn't have an `update` function gets
 // updated; the default implementation ensures that you get this message instead

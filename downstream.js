@@ -54,9 +54,17 @@ function extend(target) {
     return target;
 }
 
-// defer(Function f)
+// removeFirst(Array array, object object)
 //
-// TODO use me
+// Remove the first occurrence of `object` from `array`.
+function removeFirst(array, object) {
+    var index = array.indexOf(object);
+    if (index !== -1) {
+        array.splice(index, 1);
+    }
+}
+
+// defer(Function f)
 //
 // Call 'f' a bit later.
 // var defer = typeof setImmediate === 'function' ? setImmediate : setTimeout;
@@ -156,12 +164,10 @@ function Stream() {
         // If the update call above did set a value, it also set `this.version`
         // to `stream.version`, which is nonzero.
         if (this.version > 0) {
-            // But what we actually want for `this.version` is the version of
-            // the most recently updated parent, as if this stream had been
-            // around when it updated. This is a fine nuance really (perhaps
-            // unnecessarily fine), and only matters when giving related streams
-            // to operators that care about their parents' initial versions
-            // (such as `Stream.merge`).
+            // Pretend that this stream was around when its parents where last
+            // updated, and that this stream was updated at the same tick. This
+            // is necessary because some operators (e.g. `stream.merge(...)`)
+            // want to know which stream is newer.
             this.version = Math.max.apply(Math, _toConsumableArray(this.parents.map(function (parent) {
                 return parent.version;
             })));
@@ -185,9 +191,26 @@ Stream.prototype.hasEnded = function () {
 
 // Stream::addChild(Stream child)
 //
-// Register `child` as my child
+// Register `child` as my child. The child calls this when it's created.
 Stream.prototype.addChild = function (child) {
     this.children.push(child);
+};
+
+// Stream::removeChild(Stream child)
+//
+// Unregister `child`. The child calls this near the end of its life.
+Stream.prototype.removeChild = function (child) {
+    removeFirst(this.children, child);
+};
+
+// Stream::addParent(Stream parent)
+//
+// Establish a parent-child relationship between me and `parent`. The child
+// calls this when it needs to listen to a new parent, often from the `update`
+// method.
+Stream.prototype.addParent = function (parent) {
+    this.parents.push(parent);
+    parent.addChild(this);
 };
 
 // It's an error if a stream that doesn't have an `update` function gets
@@ -396,17 +419,23 @@ Stream.prototype.end = function () {
         this.endListeners.forEach(function (listener) {
             listener(_this2.value);
         });
+        delete this.endListeners;
     }
 
     this.listeners = [];
 
+    // Tell children I'm done here, and forget them
     this.children.forEach(function (child) {
-        // Maybe child.parentHasEnded(this)
-        // so they can override the ending behavior
         child.parentDone(_this2);
     });
-
     this.children = [];
+
+    // Ask other parents to forget me, too - an ended stream needs no
+    // updates.
+    this.parents.forEach(function (parent) {
+        parent.removeChild(_this2);
+    });
+    this.parents = [];
 };
 
 // Stream::parentDone(Stream parent)
@@ -469,10 +498,7 @@ Stream.prototype.addListener = function (f) {
 //
 // Remove the first instance of `f` from `this.listeners`, if it is there.
 Stream.prototype.removeListener = function (f) {
-    var idx = this.listeners.indexOf(f);
-    if (idx !== -1) {
-        this.listeners.splice(idx, 1);
-    }
+    removeFirst(this.listeners, f);
 };
 
 // Stream::then(Function f) -> Stream
@@ -505,7 +531,6 @@ Stream.prototype.then = function (f) {
 // `Stream::done()` is to `Stream::then` like `Stream::forEach` is to
 // `Stream::map`.
 Stream.prototype.done = function (f) {
-    // TODO extract this maybe
     if (this.hasEnded()) {
         f(this.value);
         return;
@@ -529,11 +554,7 @@ Stream.prototype.addEndListener = function (f) {
 // Remove listener from `endListeners`.
 Stream.prototype.removeEndListener = function (f) {
     if (this.endListeners) {
-        // TODO refactoring opportunity: extract "remove from array"
-        var idx = this.endListeners.indexOf(f);
-        if (idx !== -1) {
-            this.endListeners.splice(idx, 1);
-        }
+        removeFirst(this.endListeners, f);
     }
 };
 
@@ -795,12 +816,91 @@ stream.merge = function () {
     });
 };
 
-stream.flatMap = function () {
-    // TODO
-    // +Latest
-    var x;
-}
+// Stream::flatMap(Function f) -> Stream
+//
+// For every value `x` of this stream, call `f(x)` to produce a new stream, and
+// merge all resulting streams. So at any given time, the resulting stream works
+// like `stream.merge(f(s1), f(s2), ...)`, where `s1`, `s2` etc. are all
+// of the parent's values up to that point.
+//
+// A fine point in semantics: if `f` returns a stream with a value, the
+// flatMapped stream will only update with that value if the new stream's
+// version is newer than the previous ones. In other words, `.flatMap()` will
+// always reflect the newest value it has seen in its parent streams.
+//
+// Similarly to `stream.merge()`, if two or more of its parent streams updates
+// at the same tick, the resulting stream will update only once. The value will
+// be taken from the stream that was added later.
+//
+// But usually you don't need to bother yourself with the detailed semantics
+// mentioned above. The most popular use is to combine the results of
+// asynchronous operations initiated by a stream update.
+//
+// TODO ajax example or something.
+//
+//  var s = stream.from([1, 4, 7]).interval(500);
+//  var result = s.flatMap(function f(x) {
+//      return stream.from([s, s + 1, s + 2]).interval(300);
+//  };
+//
+// `s1`, `s2`, and `s3` are the streams created by feeding values of `s` into f:
+//
+//  s        1    4    7
+//  s1       1  2  3
+//  s2            4  5  6
+//  s3                 7  8  9
+//  result   1  2 43 5 76 8  9
+//
+Stream.prototype.flatMap = function (f) {
+    function flatMapUpdate(metaParent) {
+        var _this4 = this;
+
+        // flatMap is different from most streams in that it has two kinds of
+        // parents. The first one we call `metaParent`, and it's the one that
+        // `.flatMap()` was originally called on - the stream whose updates
+        // cause adding of new parents.
+        //
+        // The rest, `parents`, are the results of `f(x)` where `x` is a value
+        // of `metaParent`. They are the stream's "real" parents in the sense
+        // that it's only them that cause the flatMapped stream to update.
+        if (metaParent.wasUpdated()) {
+            // Add a new parent. If its value is newer than my previous parents'
+            // most recent value, take its value, too.
+            var newParent = this.f(metaParent.value);
+            this.addParent(newParent);
+
+            if (newParent.version > this.mostRecentParentVersion) {
+                this.newValue(newParent.value);
+                // `mostRecentParentVersion` is the maximum version of any
+                // parents I have now or have ever had, except for `metaParent`.
+                // `mostRecentParentVersion` can be older than `this.version` in
+                // those cases when I get a new parent that already has a value,
+                // and therefore needs to be remembered here. Note that we
+                // cannot compute this on the fly, since some of the parents
+                // might have ended, and thus removed from the parents list.
+                this.mostRecentParentVersion = newParent.version;
+            }
+        }
+
+        for (var _len5 = arguments.length, parents = Array(_len5 > 1 ? _len5 - 1 : 0), _key5 = 1; _key5 < _len5; _key5++) {
+            parents[_key5 - 1] = arguments[_key5];
+        }
+
+        parents.forEach(function (parent) {
+            if (parent.wasUpdated()) {
+                _this4.newValue(parent.value);
+                _this4.mostRecentParentVersion = parent.version;
+            }
+        });
+    };
+
+    // The stream initially has no parents.
+    return stream(this, {
+        update: flatMapUpdate,
+        f: f,
+        mostRecentParentVersion: 0
+    });
+};
 
 // end of downstream.js
 //# sourceMappingURL=downstream.js.map
-;

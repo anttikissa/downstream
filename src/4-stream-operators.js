@@ -233,8 +233,82 @@ stream.merge = function(...streams) {
     });
 };
 
-stream.flatMap = function() {
-    // TODO
-    // +Latest
-    var x;
-}
+// Stream::flatMap(Function f) -> Stream
+//
+// For every value `x` of this stream, call `f(x)` to produce a new stream, and
+// merge all resulting streams. So at any given time, the resulting stream works
+// like `stream.merge(f(s1), f(s2), ...)`, where `s1`, `s2` etc. are all
+// of the parent's values up to that point.
+//
+// A fine point in semantics: if `f` returns a stream with a value, the
+// flatMapped stream will only update with that value if the new stream's
+// version is newer than the previous ones. In other words, `.flatMap()` will
+// always reflect the newest value it has seen in its parent streams.
+//
+// Similarly to `stream.merge()`, if two or more of its parent streams updates
+// at the same tick, the resulting stream will update only once. The value will
+// be taken from the stream that was added later.
+//
+// But usually you don't need to bother yourself with the detailed semantics
+// mentioned above. The most popular use is to combine the results of
+// asynchronous operations initiated by a stream update.
+//
+// TODO ajax example or something.
+//
+//  var s = stream.from([1, 4, 7]).interval(500);
+//  var result = s.flatMap(function f(x) {
+//      return stream.from([s, s + 1, s + 2]).interval(300);
+//  };
+//
+// `s1`, `s2`, and `s3` are the streams created by feeding values of `s` into f:
+//
+//  s        1    4    7
+//  s1       1  2  3
+//  s2            4  5  6
+//  s3                 7  8  9
+//  result   1  2 43 5 76 8  9
+//
+Stream.prototype.flatMap = function(f) {
+    function flatMapUpdate(metaParent, ...parents) {
+        // flatMap is different from most streams in that it has two kinds of
+        // parents. The first one we call `metaParent`, and it's the one that
+        // `.flatMap()` was originally called on - the stream whose updates
+        // cause adding of new parents.
+        //
+        // The rest, `parents`, are the results of `f(x)` where `x` is a value
+        // of `metaParent`. They are the stream's "real" parents in the sense
+        // that it's only them that cause the flatMapped stream to update.
+        if (metaParent.wasUpdated()) {
+            // Add a new parent. If its value is newer than my previous parents'
+            // most recent value, take its value, too.
+            var newParent = this.f(metaParent.value);
+            this.addParent(newParent);
+
+            if (newParent.version > this.mostRecentParentVersion) {
+                this.newValue(newParent.value);
+                // `mostRecentParentVersion` is the maximum version of any
+                // parents I have now or have ever had, except for `metaParent`.
+                // `mostRecentParentVersion` can be older than `this.version` in
+                // those cases when I get a new parent that already has a value,
+                // and therefore needs to be remembered here. Note that we
+                // cannot compute this on the fly, since some of the parents
+                // might have ended, and thus removed from the parents list.
+                this.mostRecentParentVersion = newParent.version;
+            }
+        }
+
+        parents.forEach(parent => {
+            if (parent.wasUpdated()) {
+                this.newValue(parent.value);
+                this.mostRecentParentVersion = parent.version;
+            }
+        });
+    };
+
+    // The stream initially has no parents.
+    return stream(this, {
+        update: flatMapUpdate,
+        f,
+        mostRecentParentVersion: 0
+    });
+};

@@ -48,10 +48,7 @@ Stream.prototype.addListener = function(f) {
 //
 // Remove the first instance of `f` from `this.listeners`, if it is there.
 Stream.prototype.removeListener = function(f) {
-    var idx = this.listeners.indexOf(f);
-    if (idx !== -1) {
-        this.listeners.splice(idx, 1);
-    }
+    removeFirst(this.listeners, f);
 };
 
 // Stream::then(Function f) -> Stream
@@ -84,7 +81,6 @@ Stream.prototype.then = function(f) {
 // `Stream::done()` is to `Stream::then` like `Stream::forEach` is to
 // `Stream::map`.
 Stream.prototype.done = function(f) {
-    // TODO extract this maybe
     if (this.hasEnded()) {
         f(this.value);
         return;
@@ -108,10 +104,6 @@ Stream.prototype.addEndListener = function(f) {
 // Remove listener from `endListeners`.
 Stream.prototype.removeEndListener = function(f) {
     if (this.endListeners) {
-        // TODO refactoring opportunity: extract "remove from array"
-        var idx = this.endListeners.indexOf(f);
-        if (idx !== -1) {
-            this.endListeners.splice(idx, 1);
-        }
+        removeFirst(this.endListeners, f);
     }
 };

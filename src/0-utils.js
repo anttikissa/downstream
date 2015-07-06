@@ -46,9 +46,17 @@ function extend(target, ...sources) {
     return target;
 }
 
-// defer(Function f)
+// removeFirst(Array array, object object)
 //
-// TODO use me
+// Remove the first occurrence of `object` from `array`.
+function removeFirst(array, object) {
+    var index = array.indexOf(object);
+    if (index !== -1) {
+        array.splice(index, 1);
+    }
+}
+
+// defer(Function f)
 //
 // Call 'f' a bit later.
 // var defer = typeof setImmediate === 'function' ? setImmediate : setTimeout;

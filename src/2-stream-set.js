@@ -173,17 +173,23 @@ Stream.prototype.end = function() {
         this.endListeners.forEach(listener => {
             listener(this.value);
         });
+        delete this.endListeners;
     }
 
     this.listeners = [];
 
+    // Tell children I'm done here, and forget them
     this.children.forEach(child => {
-        // Maybe child.parentHasEnded(this)
-        // so they can override the ending behavior
         child.parentDone(this);
     });
-
     this.children = [];
+
+    // Ask other parents to forget me, too - an ended stream needs no
+    // updates.
+    this.parents.forEach(parent => {
+        parent.removeChild(this);
+    });
+    this.parents = [];
 };
 
 // Stream::parentDone(Stream parent)
