@@ -40,33 +40,25 @@ test('3-stream-listeners-test.js', function() {
     });
 
     test('Stream::done()', function() {
-        test('calling on a stream that has ended', function() {
+        test('calling on a stream that has ended', function(done) {
             var s = stream().end(1);
-            var doneCalled = 0;
-            s.done(function() {
-                doneCalled++;
-            });
-
-            assert.is(doneCalled, 1);
+            s.done(done);
         });
 
-        test('end listener is called when stream ends', function() {
+        test('end listener is called when stream ends', function(done) {
             var s = stream();
-            var doneCalled = 0;
-            s.done(function() {
-                doneCalled++;
-            });
-            assert.is(doneCalled, 0);
+            s.done(done);
+            assert.is(done.callCount, 0);
             s.end();
-            assert.is(doneCalled, 1);
-            test('and it is called only once');
             s.end();
-            assert.is(doneCalled, 1);
         });
     });
 
 
     test('Stream::then()', function() {
-        // TODO
+        test('called on an ended stream', function(done) {
+            var s = stream().end();
+            s.done(done);
+        })
     })
 });

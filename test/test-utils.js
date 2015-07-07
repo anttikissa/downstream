@@ -36,6 +36,20 @@ var usingCoverage = false;
 //      something(3);
 //      something(7);
 //  });
+//
+// Additionally, test functions can take a 'done' callback, which must be called
+// exactly once. They can also access the current call count with
+// `done.callCount`. The `done` function must be called synchronously.
+//
+//  test('something()', function(done) {
+//      var s = something();
+//      s.callMeMaybe(done);
+//      assert.is(done.callCount, 0); // not called yet
+//      ...
+//      s.callIt();
+//      assert.is(done.callCount, 1); // unnecessary; the framework checks it
+// });
+
 function test(what, f) {
     function doTest() {
         if (failed) {
@@ -51,7 +65,21 @@ function test(what, f) {
                     blanket.onTestStart();
                 }
                 idx++;
-                f();
+                if (f.length === 1) {
+                    var done = function done() {
+                        done.callCount++;
+                    };
+                    done.callCount = 0;
+
+                    f(done);
+                    if (done.callCount !== 1) {
+                        throw new Error('done callback was called '
+                            + done.callCount + ' times, should be 1. Test was ', what);
+                    }
+                } else {
+                    f();
+                }
+
                 successful++;
                 if (usingCoverage) {
                     blanket.onTestDone(null, successful);
