@@ -41,7 +41,7 @@ test('3-stream-listeners-test.js', function() {
 
     test('Stream::done()', function() {
         test('calling on a stream that has ended', function() {
-            var s = stream().set(1).end();
+            var s = stream().end(1);
             var doneCalled = 0;
             s.done(function() {
                 doneCalled++;

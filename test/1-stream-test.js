@@ -61,8 +61,8 @@ test('1-stream-test.js', function() {
         });
 
         test('both parents have ended', function() {
-            var s1 = stream().set(1).end();
-            var s2 = stream().set(2).end();
+            var s1 = stream().end(1);
+            var s2 = stream().end(2);
             var result = merge(s1, s2);
             assert.is(result.value, 2);
             assert(result.hasEnded());

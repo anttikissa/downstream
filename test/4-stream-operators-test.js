@@ -673,7 +673,7 @@ test('4-stream-operators-test.js', function() {
             test('does not add ended streams to its parents', function() {
                 var s = stream();
                 var flatMapped = s.flatMap(function(number) {
-                    return stream().set(number * 10).end();
+                    return stream().end(number * 10);
                 });
 
                 assert.is(flatMapped.parents.length, 1);

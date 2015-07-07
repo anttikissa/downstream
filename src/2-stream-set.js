@@ -154,12 +154,13 @@ stream.updateOrder = function(source) {
     return result;
 };
 
-// Stream::end() -> Stream
+// Stream::end(optional finalValue) -> Stream
 //
-// Declares that this stream has done its business, and that its final value is
-// `this.value`.
+// Declares that this stream has done its business. Optionally set its final
+// value to `finalValue` first.
 //
-// Ending a stream consists of three steps:
+// After the final value has been (optionally) set, ending a stream consists of
+// three steps:
 //
 // - Set the stream's state to `ended`
 // - Inform end listeners (see `.done()`, `.then()`) that this stream has ended
@@ -174,10 +175,12 @@ stream.updateOrder = function(source) {
 // be used when initializing the initial value, similarly to how you can call
 // '.then()' on a resolved Promise.
 //
-// If you want to end a stream with a value, call `this.set(finalValue)` first.
-//
 // Return `this` for convenience.
-Stream.prototype.end = function() {
+Stream.prototype.end = function(value) {
+    if (value !== undefined) {
+        this.set(value);
+    }
+
     if (this.state === 'ended') {
         return;
     }
