@@ -83,13 +83,21 @@ Stream.prototype.hasEnded = function() {
 // Stream::addChild(Stream child)
 //
 // Register `child` as my child. The child calls this when it's created.
+//
+// This ensures that whenever this stream is updated, the child's update
+// function gets called. As an optimization, the child will be added only for
+// active streams, since that's the only kind of stream that can update.
 Stream.prototype.addChild = function(child) {
-    this.children.push(child);
+    if (this.state === 'active') {
+        this.children.push(child);
+    }
 };
 
 // Stream::removeChild(Stream child)
 //
 // Unregister `child`. The child calls this near the end of its life.
+//
+// If `child` isn't in the children list, then do nothing.
 Stream.prototype.removeChild = function(child) {
     removeFirst(this.children, child);
 };
@@ -98,10 +106,12 @@ Stream.prototype.removeChild = function(child) {
 //
 // Establish a parent-child relationship between me and `parent`. The child
 // calls this when it needs to listen to a new parent, often from the `update`
-// method.
+// method. As with `addChild()`, do nothing if the parent is not active.
 Stream.prototype.addParent = function(parent) {
-    this.parents.push(parent);
-    parent.addChild(this);
+    if (parent.state === 'active') {
+        this.parents.push(parent);
+        parent.addChild(this);
+    }
 }
 
 // It's an error if a stream that doesn't have an `update` function gets

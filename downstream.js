@@ -192,13 +192,21 @@ Stream.prototype.hasEnded = function () {
 // Stream::addChild(Stream child)
 //
 // Register `child` as my child. The child calls this when it's created.
+//
+// This ensures that whenever this stream is updated, the child's update
+// function gets called. As an optimization, the child will be added only for
+// active streams, since that's the only kind of stream that can update.
 Stream.prototype.addChild = function (child) {
-    this.children.push(child);
+    if (this.state === 'active') {
+        this.children.push(child);
+    }
 };
 
 // Stream::removeChild(Stream child)
 //
 // Unregister `child`. The child calls this near the end of its life.
+//
+// If `child` isn't in the children list, then do nothing.
 Stream.prototype.removeChild = function (child) {
     removeFirst(this.children, child);
 };
@@ -207,10 +215,12 @@ Stream.prototype.removeChild = function (child) {
 //
 // Establish a parent-child relationship between me and `parent`. The child
 // calls this when it needs to listen to a new parent, often from the `update`
-// method.
+// method. As with `addChild()`, do nothing if the parent is not active.
 Stream.prototype.addParent = function (parent) {
-    this.parents.push(parent);
-    parent.addChild(this);
+    if (parent.state === 'active') {
+        this.parents.push(parent);
+        parent.addChild(this);
+    }
 };
 
 // It's an error if a stream that doesn't have an `update` function gets
@@ -389,23 +399,29 @@ stream.updateOrder = function (source) {
     return result;
 };
 
-// Stream::end()
+// Stream::end() -> Stream
 //
 // Declares that this stream has done its business, and that its final value is
 // `this.value`.
 //
 // Ending a stream consists of three steps:
 //
-// - Set my state to `ended`
-// - Inform end listeners that this stream has ended
-// - Inform children that this stream has ended
+// - Set the stream's state to `ended`
+// - Inform end listeners (see `.done()`, `.then()`) that this stream has ended
+// - Inform children that this stream has ended (using `.parentDone()`)
 //
 // After children and listeners have been informed, this stream doesn't need a
 // reference to them any more, so delete those links.
 //
 // Calling `.end()` on an ended stream has no effect.
 //
+// An ended stream can be used as a parent for new streams, and its value will
+// be used when initializing the initial value, similarly to how you can call
+// '.then()' on a resolved Promise.
+//
 // If you want to end a stream with a value, call `this.set(finalValue)` first.
+//
+// Return `this` for convenience.
 Stream.prototype.end = function () {
     var _this2 = this;
 
@@ -436,6 +452,8 @@ Stream.prototype.end = function () {
         parent.removeChild(_this2);
     });
     this.parents = [];
+
+    return this;
 };
 
 // Stream::parentDone(Stream parent)
@@ -901,11 +919,24 @@ Stream.prototype.flatMap = function (f) {
         }
     };
 
+    // When parents are done, clean them up from `.parents` - for busy streams
+    // there might be thousands (or more) of parents eventually that only  live
+    // for a short while, no point maintaining references to them.
+    function flatMapParentDone(parent) {
+        // Remove parent from this.parents (but only if it's not the first one,
+        // since it gets special treatment in `update()`)
+        if (parent !== this.parents[0]) {
+            removeFirst(this.parents, parent);
+        }
+
+        Stream.prototype.endStreamIfAllParentsEnded.call(this);
+    }
+
     return stream(this, {
         update: flatMapUpdate,
         f: f,
         mostRecentParentVersion: 0,
-        parentDone: Stream.prototype.endStreamIfAllParentsEnded
+        parentDone: flatMapParentDone
     });
 };
 

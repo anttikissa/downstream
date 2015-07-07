@@ -145,23 +145,29 @@ stream.updateOrder = function(source) {
     return result;
 };
 
-// Stream::end()
+// Stream::end() -> Stream
 //
 // Declares that this stream has done its business, and that its final value is
 // `this.value`.
 //
 // Ending a stream consists of three steps:
 //
-// - Set my state to `ended`
-// - Inform end listeners that this stream has ended
-// - Inform children that this stream has ended
+// - Set the stream's state to `ended`
+// - Inform end listeners (see `.done()`, `.then()`) that this stream has ended
+// - Inform children that this stream has ended (using `.parentDone()`)
 //
 // After children and listeners have been informed, this stream doesn't need a
 // reference to them any more, so delete those links.
 //
 // Calling `.end()` on an ended stream has no effect.
 //
+// An ended stream can be used as a parent for new streams, and its value will
+// be used when initializing the initial value, similarly to how you can call
+// '.then()' on a resolved Promise.
+//
 // If you want to end a stream with a value, call `this.set(finalValue)` first.
+//
+// Return `this` for convenience.
 Stream.prototype.end = function() {
     if (this.state === 'ended') {
         return;
@@ -190,6 +196,8 @@ Stream.prototype.end = function() {
         parent.removeChild(this);
     });
     this.parents = [];
+
+    return this;
 };
 
 // Stream::parentDone(Stream parent)

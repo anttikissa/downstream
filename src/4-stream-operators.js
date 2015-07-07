@@ -312,10 +312,23 @@ Stream.prototype.flatMap = function(f) {
         }
     };
 
+    // When parents are done, clean them up from `.parents` - for busy streams
+    // there might be thousands (or more) of parents eventually that only  live
+    // for a short while, no point maintaining references to them.
+    function flatMapParentDone(parent) {
+        // Remove parent from this.parents (but only if it's not the first one,
+        // since it gets special treatment in `update()`)
+        if (parent !== this.parents[0]) {
+            removeFirst(this.parents, parent);
+        }
+
+        Stream.prototype.endStreamIfAllParentsEnded.call(this);
+     }
+
     return stream(this, {
         update: flatMapUpdate,
         f,
         mostRecentParentVersion: 0,
-        parentDone: Stream.prototype.endStreamIfAllParentsEnded
+        parentDone: flatMapParentDone
     });
 };

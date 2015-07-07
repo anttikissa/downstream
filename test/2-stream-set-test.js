@@ -41,6 +41,11 @@ test('2-stream-set-test.js', function() {
     // TODO test updateOrder
 
     test('Stream::end()', function() {
+        test('returns the stream', function() {
+            var s = stream();
+            assert.is(s.end(), s);
+        });
+
         test('sets the stream to ended state', function() {
             var s = stream();
 
@@ -64,4 +69,26 @@ test('2-stream-set-test.js', function() {
             assert.is(doneCalled, 1);
         });
     });
+
+    test('Adding an ended stream as a parent', function() {
+        function combine(s1, s2) {
+            return stream([s1, s2], {
+                update: function(s1, s2) {
+                    this.newValue(s1.value + s2.value);
+                }
+            });
+        }
+
+        var s1 = stream().set(1);
+        var s2 = stream().set(2);
+        s2.end();
+
+        var result = combine(s1, s2);
+        assert.is(result.parents[0], s1);
+        assert.is(result.parents[1], s2);
+
+        assert.is(s1.children.length, 1);
+        test('the ended stream should not have adopted children');
+        assert.is(s2.children.length, 0);
+    })
 });

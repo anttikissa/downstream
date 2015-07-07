@@ -663,10 +663,51 @@ test('4-stream-operators-test.js', function() {
                 assert(allValues.hasEnded());
             });
 
-            test('deletes streams from .parents when they end', function() {
-                // TODO
+            test('does not add ended streams to its parents', function() {
+                var s = stream();
+                var flatMapped = s.flatMap(function(number) {
+                    return stream().set(number * 10).end();
+                });
+
+                assert.is(flatMapped.parents.length, 1);
+                s.set(1);
+                // It updates with the value of the new stream, though:
+                assert.is(flatMapped.value, 10);
+                assert.is(flatMapped.parents.length, 1);
+                s.set(2);
+                assert.is(flatMapped.value, 20);
+                assert.is(flatMapped.parents.length, 1);
+
+                s.end();
+                assert(flatMapped.hasEnded());
             });
 
+            test('deletes streams from .parents as they end', function() {
+                var s = stream();
+                var streams = [stream(), stream(), stream()];
+
+                var flatMapped = s.flatMap(function(idx) {
+                    return streams[idx].set(idx * 10);
+                });
+
+                s.set(0);
+                s.set(1);
+                s.set(2);
+
+                assert.is(flatMapped.value, 20);
+                assert.is(flatMapped.parents.length, 4);
+                streams[0].end();
+                assert.is(flatMapped.parents.length, 3);
+                streams[1].end();
+                assert.is(flatMapped.parents.length, 2);
+                streams[2].end();
+                assert.is(flatMapped.parents.length, 1);
+            });
+        });
+
+        test('ended stream can be used as parent', function() {
+            var s = stream().set(1);
+            s.end();
         });
     });
 });
