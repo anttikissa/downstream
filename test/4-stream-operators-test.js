@@ -259,15 +259,13 @@ test('4-stream-operators-test.js', function() {
 
             assert.eq(s2.value, [1, 2]);
 
-            test('collected stream ends when parent ends', function() {
-                var doneCalled = false;
+            test('collected stream ends when parent ends', function(done) {
                 s2.done(function(finalValue) {
                     assert.eq(finalValue, [1, 2]);
-                    doneCalled = true;
+                    done();
                 });
 
                 s.end();
-                assert(doneCalled);
             });
         });
 
@@ -327,7 +325,7 @@ test('4-stream-operators-test.js', function() {
             assert.is(s.value, undefined);
         });
 
-        test('ends when one of parent streams ends', function() {
+        test('ends when one of parent streams ends', function(done) {
             var s1 = stream().set(1);
             var s2 = stream().set(2);
 
@@ -335,15 +333,10 @@ test('4-stream-operators-test.js', function() {
 
             assert.is(sum.value, 3);
 
-            var doneCalled = 0;
-            sum.done(function() {
-                doneCalled++;
-            });
+            sum.done(done);
             s2.end();
-            assert.is(doneCalled, 1);
-
+            assert.is(done.callCount, 1);
             s1.end();
-            assert.is(doneCalled, 1);
 
         });
 
@@ -489,17 +482,16 @@ test('4-stream-operators-test.js', function() {
             assert(mergedEnded);
         });
 
-        test('with three streams', function() {
+        test('with three streams', function(done) {
             var s = stream();
             var s2 = stream();
             var s3 = stream();
 
             var merged = stream.merge(s, s2, s3);
 
-            var doneCalled = false;
             merged.collect().done(function(values) {
                 assert.eq(values, ([1, 2, 3, 4]));
-                doneCalled = true;
+                done();
             });
 
             s3.set(1);
@@ -509,8 +501,6 @@ test('4-stream-operators-test.js', function() {
             s.end();
             s2.end();
             s3.end();
-
-            assert(doneCalled);
         });
 
         test('initial value comes from the newest parent', function() {

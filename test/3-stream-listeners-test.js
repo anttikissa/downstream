@@ -40,25 +40,28 @@ test('3-stream-listeners-test.js', function() {
     });
 
     test('Stream::done()', function() {
-        test('calling on a stream that has ended', function(done) {
+        test('on an ended stream', function(done) {
             var s = stream().end(1);
             s.done(done);
         });
 
-        test('end listener is called when stream ends', function(done) {
+        test('callback is called when the stream ends', function(done) {
             var s = stream();
             s.done(done);
             assert.is(done.callCount, 0);
             s.end();
+            assert.is(done.callCount, 1);
             s.end();
         });
     });
 
 
     test('Stream::then()', function() {
-        test('called on an ended stream', function(done) {
+        test('on an ended stream', function(done) {
             var s = stream().end();
             s.done(done);
-        })
+        });
+
+        test('')
     })
 });
