@@ -96,6 +96,7 @@ blanket.beforeStartTestRunner({
         if (!usingCoverage) {
             throw new Error('usingCoverage must be true');
         }
+
         console.time('run all tests for code coverage');
         runAllTests();
         console.timeEnd('run all tests for code coverage');
@@ -107,7 +108,7 @@ blanket.beforeStartTestRunner({
 // First runs all tests, and if 100% pass, then run all tests again to collect
 // code coverage. The two separate runs are necessary because debugging is not
 // really feabible after you've setup the coverage collection.
-function main() {
+function testMain() {
     console.log('');
     console.log('STANDARD RUN STARTS HERE');
     console.log('');
@@ -126,9 +127,6 @@ function main() {
     usingCoverage = true;
     blanket.setupCoverage();
 }
-
-// Wait a millisecond so the test functions get registered
-setTimeout(main);
 
 function isNaNReally(value) {
     return typeof value === 'number' && isNaN(value);
