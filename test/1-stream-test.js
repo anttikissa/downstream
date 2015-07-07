@@ -20,4 +20,10 @@ test('1-stream-test.js', function() {
             parent.set(1);
         }, 'Stream does not define update()');
     });
+
+    test('error messages when passing in a non-stream parent', function() {
+        assert.throws(function() {
+            stream(1);
+        }, 'parent 1 is not a Stream');
+    });
 });

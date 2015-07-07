@@ -6,40 +6,129 @@ function defer(f) {
     setTimeout(f, 1);
 }
 
-// Allows tests with the syntax
-// test('description of test', function() { /* code to be run */ });
-// and also 'markers' that simply print out what part of the test is being
-// run next:
-// test('something()', function() {
-//   test('something() with no args');
-//   something();
-//   ... assert something
-//   test('something() with odd numbers');
-//   something(1);
-//   something(3);
-//   something(7);
-// });
 var depth = 0;
 
 var failed = false;
 
+var idx = 0;
+var successful = 0;
+
+var topLevelTests = [];
+
+var testsStarted = false;
+var usingCoverage = false;
+
+// Allows tests with the syntax
+//
+//  test('description of test', function() {
+//      /* code to be run */
+//  });
+//
+// and also 'markers' that simply print out what part of the test is being
+// run next:
+//
+//  test('something()', function() {
+//      test('something() with no args');
+//      something();
+//      ... assert something
+//      test('something() with odd numbers');
+//      something(1);
+//      something(3);
+//      something(7);
+//  });
 function test(what, f) {
+    function doTest() {
+        if (failed) {
+            return;
+        }
+        if (!usingCoverage) {
+            log(Array(depth + 1).join('| ') + what);
+        }
+        depth++;
+        if (f) {
+            try {
+                if (usingCoverage) {
+                    blanket.onTestStart();
+                }
+                idx++;
+                f();
+                successful++;
+                if (usingCoverage) {
+                    blanket.onTestDone(null, successful);
+                }
+            } catch (err) {
+                failed = true;
+                console.error(err);
+                if (usingCoverage) {
+                    blanket.onTestDone(null, successful);
+                }
+                throw err;
+            }
+        }
+        depth--;
+    }
+
+    if (testsStarted) {
+        doTest();
+    } else {
+        topLevelTests.push(doTest);
+    }
+}
+
+function runAllTests() {
+    topLevelTests.forEach(function(test) {
+        test();
+        if (usingCoverage) {
+            blanket.onTestsDone();
+        }
+    });
+}
+
+blanket.beforeStartTestRunner({
+    // This will be run right after `blanket.setupCoverage()`.
+    //
+    // Might be due to chance. But there's been enough hoop-jumping because of
+    // blanket.js, so call it good enough for now.
+    callback: function() {
+        if (failed) {
+            return;
+        }
+        if (!usingCoverage) {
+            throw new Error('usingCoverage must be true');
+        }
+        console.time('run all tests for code coverage');
+        runAllTests();
+        console.timeEnd('run all tests for code coverage');
+    }
+});
+
+// The main entry point for running tests
+//
+// First runs all tests, and if 100% pass, then run all tests again to collect
+// code coverage. The two separate runs are necessary because debugging is not
+// really feabible after you've setup the coverage collection.
+function main() {
+    console.log('');
+    console.log('STANDARD RUN STARTS HERE');
+    console.log('');
+
+    testsStarted = true;
+    console.time('run all tests');
+    runAllTests();
+    console.timeEnd('run all tests');
     if (failed) {
         return;
     }
-    log(Array(depth + 1).join('| ') + what);
-    depth++;
-    if (f) {
-        try {
-            f();
-        } catch (err) {
-            failed = true;
-            console.error(err);
-            throw err;
-        }
-    }
-    depth--;
+
+    console.log('');
+    console.log('COVERAGE RUN STARTS HERE');
+    console.log('');
+    usingCoverage = true;
+    blanket.setupCoverage();
 }
+
+// Wait a millisecond so the test functions get registered
+setTimeout(main);
 
 function isNaNReally(value) {
     return typeof value === 'number' && isNaN(value);
