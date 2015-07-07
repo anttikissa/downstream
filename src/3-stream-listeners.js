@@ -59,18 +59,31 @@ Stream.prototype.removeListener = function(f) {
 // a stream, the resulting stream will update with the returned stream's values.
 //
 // TODO good example
+// TODO THIS IS BROKEN... it'll be fun continuing from here
 Stream.prototype.then = function(f) {
+    // `values` will be a stream (possibly) containing the value that `f`
+    // returns
+    var values = stream();
+    var result = values.flatMap(function(value) {
+        if (value instanceof Stream) {
+            return stream;
+        }
+        return stream().set(value);
+    });
+
+    // Can we call f instantly?
+    // TODO Actually flatMap not necessary in that case
     if (this.hasEnded()) {
-        f(this.value);
-        // No need to addEndListener(), since end only happens once
-        return;
+        var value = f(this.value);
+        values.set(value);
+        return result;
     }
 
-    this.addEndListener(f);
+    this.addEndListener(function(finalValue) {
+        var value = f(finalValue);
+        values.set(value);
+    });
 
-    var result = stream();
-
-    // TODO implement when flatMap is there
     return result;
 };
 

@@ -59,9 +59,29 @@ test('3-stream-listeners-test.js', function() {
     test('Stream::then()', function() {
         test('on an ended stream', function(done) {
             var s = stream().end();
-            s.done(done);
+            s.then(done);
         });
 
-        test('')
+        test('callback is called when the stream ends', function(done) {
+            var s = stream();
+            s.then(done);
+            s.end();
+        });
+
+        test('the result sees the stream returned by callback', function() {
+            var s = stream();
+            var s2 = stream().set(1);
+
+            var result = s.then(function(finalValue) {
+                return s2.set(finalValue * 10);
+            });
+
+            s.end(2);
+            assert.is(result.value, 20);
+
+            assert(!result.hasEnded());
+            s2.end();
+            assert(result.hasEnded());
+        });
     })
 });
