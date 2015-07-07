@@ -22,14 +22,21 @@ test('1-stream-test.js', function() {
     });
 
     test('Adding ended streams as parents', function() {
-        // Stream that is sum of the most recent values of its parent streams
-        // Similar to stream.combine(function(x, y) { x + y}, ...) but only
-        // exercises the relevant parts of the code base.
-        function sum(s1, s2) {
+        // A simple implementation of stream.merge() for two streams.
+        // Reimplemented here so the test would only exercise relevant parts of
+        // the code.
+        function merge(s1, s2) {
             return stream([s1, s2], {
                 update: function(s1, s2) {
-                    this.newValue(s1.value + s2.value);
-                }
+                    if (s1.hasValue()) {
+                        this.newValueFrom(s1);
+                    }
+                    if (s2.hasValue()) {
+                        this.newValueFrom(s2);
+                    }
+                },
+                // Well, this is borrowed from 4-stream-operators. A minor sin.
+                parentDone: Stream.prototype.endStreamIfAllParentsEnded
             });
         }
 
@@ -38,13 +45,32 @@ test('1-stream-test.js', function() {
             var s2 = stream().set(2);
             s2.end();
 
-            var result = sum(s1, s2);
+            var result = merge(s1, s2);
             assert.is(result.parents[0], s1);
             assert.is(result.parents[1], s2);
 
+            test('the resulting stream is still active');
+            assert(!result.hasEnded());
+
+            test("and it's the only child of the active parent");
             assert.is(s1.children.length, 1);
-            test('the ended stream should not have adopted children');
+            assert.is(s1.children[0], result);
+
+            test('the ended stream should not have added it as a child');
             assert.is(s2.children.length, 0);
+        });
+
+        test('both parents have ended', function() {
+            var s1 = stream().set(1).end();
+            var s2 = stream().set(2).end();
+            var result = merge(s1, s2);
+            assert.is(result.value, 2);
+            assert(result.hasEnded());
+            assert.is(result.parents.length, 0);
+
+            // assert.is(result.parents[0], s1);
+            // assert.is(result.parents[0], s1);
+
         });
     });
 

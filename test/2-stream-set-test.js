@@ -39,6 +39,29 @@ test('2-stream-set-test.js', function() {
     });
 
     // TODO test updateOrder
+    // and possibly something else
+
+    test('Stream::newValue()', function() {
+        var s = stream();
+        assert.is(s.value, undefined);
+        assert.is(s.version, 0);
+
+        s.newValue(1);
+        assert.is(s.value, 1);
+        assert.is(s.version, stream.version);
+    });
+
+    test('Stream::newValueFrom()', function() {
+        var s = stream().set(1);
+        var s2 = stream();
+
+        assert.is(s2.value, undefined);
+        assert.is(s2.version, 0);
+        s2.newValueFrom(s);
+
+        assert.is(s2.value, 1);
+        assert.is(s2.version, stream.version);
+    });
 
     test('Stream::end()', function() {
         test('returns the stream', function() {

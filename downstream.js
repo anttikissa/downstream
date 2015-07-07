@@ -173,6 +173,15 @@ function Stream() {
             })));
         }
     }
+
+    // Establish the initial state: if some of my parents have ended, it might
+    // be necessary to end this stream, too. Calling `parentDone` is the
+    // established way to do this.
+    this.parents.forEach(function (parent) {
+        if (parent.hasEnded()) {
+            _this.parentDone(parent);
+        }
+    });
 }
 
 // Stream::hasValue() -> boolean
@@ -216,6 +225,7 @@ Stream.prototype.removeChild = function (child) {
 // Establish a parent-child relationship between me and `parent`. The child
 // calls this when it needs to listen to a new parent, often from the `update`
 // method. As with `addChild()`, do nothing if the parent is not active.
+// So the child cannot assume that this will modify its `.parents`.
 Stream.prototype.addParent = function (parent) {
     if (parent.state === 'active') {
         this.parents.push(parent);
@@ -295,6 +305,15 @@ Stream.prototype.wasUpdated = function () {
 // Update methods should use this to set the new value.
 Stream.prototype.newValue = function (value) {
     this.value = value;
+    this.version = stream.version;
+};
+
+// Stream::newValue(Stream parent)
+//
+// An often-used shorthand for taking a value from another stream (usually
+// parent of this stream).
+Stream.prototype.newValueFrom = function (parent) {
+    this.value = parent.value;
     this.version = stream.version;
 };
 
@@ -462,6 +481,9 @@ Stream.prototype.end = function () {
 // to end the child as well. Streams that don't need this behavior should
 // override `parentDone()` to do the right thing (e.g. `stream.merge` only ends
 // after all of its parents have ended).
+//
+// If the stream is created with one or more ended parents, this method will
+// be called during the initialization.
 Stream.prototype.parentDone = function (parent) {
     this.end();
 };

@@ -64,6 +64,15 @@ function Stream(parentOrParents = [], options = {}) {
             this.version = Math.max(...this.parents.map(parent => parent.version));
         }
     }
+
+    // Establish the initial state: if some of my parents have ended, it might
+    // be necessary to end this stream, too. Calling `parentDone` is the
+    // established way to do this.
+    this.parents.forEach(parent => {
+        if (parent.hasEnded()) {
+            this.parentDone(parent);
+        }
+    });
 }
 
 // Stream::hasValue() -> boolean
@@ -107,6 +116,7 @@ Stream.prototype.removeChild = function(child) {
 // Establish a parent-child relationship between me and `parent`. The child
 // calls this when it needs to listen to a new parent, often from the `update`
 // method. As with `addChild()`, do nothing if the parent is not active.
+// So the child cannot assume that this will modify its `.parents`.
 Stream.prototype.addParent = function(parent) {
     if (parent.state === 'active') {
         this.parents.push(parent);

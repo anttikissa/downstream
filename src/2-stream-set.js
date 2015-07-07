@@ -44,6 +44,15 @@ Stream.prototype.newValue = function(value) {
     this.version = stream.version;
 };
 
+// Stream::newValue(Stream parent)
+//
+// An often-used shorthand for taking a value from another stream (usually
+// parent of this stream).
+Stream.prototype.newValueFrom = function(parent) {
+    this.value = parent.value;
+    this.version = stream.version;
+};
+
 // Stream::set(value) -> Stream
 //
 // Set the value of this stream to `value`.
@@ -206,6 +215,9 @@ Stream.prototype.end = function() {
 // to end the child as well. Streams that don't need this behavior should
 // override `parentDone()` to do the right thing (e.g. `stream.merge` only ends
 // after all of its parents have ended).
+//
+// If the stream is created with one or more ended parents, this method will
+// be called during the initialization.
 Stream.prototype.parentDone = function(parent) {
     this.end();
 };
