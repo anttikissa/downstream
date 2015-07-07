@@ -89,6 +89,13 @@ test('4-stream-operators-test.js', function() {
     });
 
     test('Combining map, filter, and uniq', function() {
+        // Certain browsers had problems with this
+        if (!String.prototype.includes) {
+            // So monkey-patch a "good enough for this test" variant of `includes`
+            String.prototype.includes = function(what) {
+                return this.indexOf(what) !== -1;
+            }
+        }
         var numbers = stream();
         var letters = numbers.map(function(value) {
             return String.fromCharCode(value + 64);

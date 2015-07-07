@@ -5,5 +5,5 @@ cd $(dirname $0)
 SERVE=./node_modules/.bin/serve
 URL='http://localhost:3000/test'
 
-(echo "Opening tests in a browser..." && sleep 0.5 && open $URL) &
+(echo "Opening tests in a browser, URL $URL" && sleep 0.5 && open $URL) &
 $SERVE .

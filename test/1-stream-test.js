@@ -21,6 +21,66 @@ test('1-stream-test.js', function() {
         }, 'Stream does not define update()');
     });
 
+    test('Stream::log()', function() {
+        var oldConsoleLog;
+
+        // This assumes that console.log can be changed, which is the case at
+        // least in Chrome.
+        function saveLog() {
+            oldConsoleLog = console.log;
+            var log = [];
+            console.log = function() {
+                log.push([].slice.apply(arguments));
+            };
+            return log;
+        }
+
+        function restoreLog() {
+            console.log = oldConsoleLog;
+        }
+
+        test('without prefix', function() {
+            var log = saveLog();
+
+            try {
+                s = stream().set(1);
+                s.log();
+                s.set(2);
+                assert.eq(log, [[1], [2]]);
+            } finally {
+                restoreLog();
+            }
+        });
+
+        test('with prefix', function() {
+            var log = saveLog();
+
+            try {
+                s = stream().set(1);
+                s.log('with a prefix');
+                s.set(2);
+                assert.eq(log, [['with a prefix', 1], ['with a prefix', 2]]);
+            } finally {
+                restoreLog();
+            }
+        });
+
+        test('two loggers', function() {
+            var log = saveLog();
+
+            try {
+                s = stream();
+                s.log('first');
+                s.log('second');
+                assert.is(s.listeners.length, 2);
+                s.set(2);
+                assert.eq(log, [['first', 2], ['second', 2]]);
+            } finally {
+                restoreLog();
+            }
+        });
+    });
+
     test('error messages when passing in a non-stream parent', function() {
         assert.throws(function() {
             stream(1);
