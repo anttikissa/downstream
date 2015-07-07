@@ -34,6 +34,7 @@ function test(what, f) {
             f();
         } catch (err) {
             failed = true;
+            console.error(err);
             throw err;
         }
     }
@@ -46,10 +47,15 @@ function isNaNReally(value) {
 
 // A (slightly) better JSON.stringify for accurate error reportage.
 function describe(value) {
-    if (isNaNReally(value)) {
-        return "NaN";
+    try {
+        if (isNaNReally(value)) {
+            return "NaN";
+        }
+        return JSON.stringify(value);
+    } catch (err) {
+        // Usually we end up here if the value is circular, not much to do:
+        return value.toString();
     }
-    return JSON.stringify(value);
 }
 
 // Print out relevant information about the error.
