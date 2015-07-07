@@ -43,7 +43,7 @@ Stream.prototype.filter = function(f) {
 
     function filterUpdate(parent) {
         if (this.f(parent.value)) {
-            this.newValue(parent.value);
+            this.newValueFrom(parent);
         }
     }
 
@@ -68,7 +68,7 @@ Stream.prototype.filter = function(f) {
 Stream.prototype.uniq = function() {
     function uniqUpdate(parent) {
         if (this.value !== parent.value) {
-            this.newValue(parent.value);
+            this.newValueFrom(parent);
         }
     }
 
@@ -125,7 +125,7 @@ Stream.prototype.reduce = function(f, initialValue) {
         if (this.hasValue()) {
             this.newValue(this.f(this.value, parent.value));
         } else {
-            this.newValue(parent.value);
+            this.newValueFrom(parent);
         }
     }
 
@@ -216,7 +216,7 @@ stream.merge = function(...streams) {
     function mergeUpdate() {
         this.parents.forEach(parent => {
             if (parent.wasUpdated()) {
-                this.newValue(parent.value);
+                this.newValueFrom(parent);
             }
         });
     }
@@ -285,7 +285,7 @@ Stream.prototype.flatMap = function(f) {
         // that it's only them that cause the flatMapped stream to update.
         parents.forEach(parent => {
             if (parent.wasUpdated()) {
-                this.newValue(parent.value);
+                this.newValueFrom(parent);
                 this.mostRecentParentVersion = parent.version;
             }
         });
@@ -299,7 +299,7 @@ Stream.prototype.flatMap = function(f) {
             this.addParent(newParent);
 
             if (newParent.version >= this.mostRecentParentVersion) {
-                this.newValue(newParent.value);
+                this.newValueFrom(newParent);
                 // `mostRecentParentVersion` is the maximum version of any
                 // parents I have now or have ever had, except for `metaParent`.
                 // `mostRecentParentVersion` can be older than `this.version` in
