@@ -22,7 +22,10 @@ test('1-stream-test.js', function() {
     });
 
     test('Adding ended streams as parents', function() {
-        function combine(s1, s2) {
+        // Stream that is sum of the most recent values of its parent streams
+        // Similar to stream.combine(function(x, y) { x + y}, ...) but only
+        // exercises the relevant parts of the code base.
+        function sum(s1, s2) {
             return stream([s1, s2], {
                 update: function(s1, s2) {
                     this.newValue(s1.value + s2.value);
@@ -30,18 +33,21 @@ test('1-stream-test.js', function() {
             });
         }
 
-        var s1 = stream().set(1);
-        var s2 = stream().set(2);
-        s2.end();
+        test('one of the parents has ended', function() {
+            var s1 = stream().set(1);
+            var s2 = stream().set(2);
+            s2.end();
 
-        var result = combine(s1, s2);
-        assert.is(result.parents[0], s1);
-        assert.is(result.parents[1], s2);
+            var result = sum(s1, s2);
+            assert.is(result.parents[0], s1);
+            assert.is(result.parents[1], s2);
 
-        assert.is(s1.children.length, 1);
-        test('the ended stream should not have adopted children');
-        assert.is(s2.children.length, 0);
+            assert.is(s1.children.length, 1);
+            test('the ended stream should not have adopted children');
+            assert.is(s2.children.length, 0);
+        });
     });
+
 
     test('Stream::log()', function() {
         var oldConsoleLog;
