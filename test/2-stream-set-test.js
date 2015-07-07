@@ -55,40 +55,5 @@ test('2-stream-set-test.js', function() {
             assert.is(s.state, 'ended');
             assert(s.hasEnded());
         });
-
-        test('can be called twice, but end listener is only called once', function() {
-            var s = stream();
-            var doneCalled = 0;
-            s.done(function() {
-                doneCalled++;
-            });
-            assert.is(doneCalled, 0);
-            s.end();
-            assert.is(doneCalled, 1);
-            s.end();
-            assert.is(doneCalled, 1);
-        });
     });
-
-    test('Adding an ended stream as a parent', function() {
-        function combine(s1, s2) {
-            return stream([s1, s2], {
-                update: function(s1, s2) {
-                    this.newValue(s1.value + s2.value);
-                }
-            });
-        }
-
-        var s1 = stream().set(1);
-        var s2 = stream().set(2);
-        s2.end();
-
-        var result = combine(s1, s2);
-        assert.is(result.parents[0], s1);
-        assert.is(result.parents[1], s2);
-
-        assert.is(s1.children.length, 1);
-        test('the ended stream should not have adopted children');
-        assert.is(s2.children.length, 0);
-    })
 });

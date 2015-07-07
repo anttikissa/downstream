@@ -21,6 +21,28 @@ test('1-stream-test.js', function() {
         }, 'Stream does not define update()');
     });
 
+    test('Adding ended streams as parents', function() {
+        function combine(s1, s2) {
+            return stream([s1, s2], {
+                update: function(s1, s2) {
+                    this.newValue(s1.value + s2.value);
+                }
+            });
+        }
+
+        var s1 = stream().set(1);
+        var s2 = stream().set(2);
+        s2.end();
+
+        var result = combine(s1, s2);
+        assert.is(result.parents[0], s1);
+        assert.is(result.parents[1], s2);
+
+        assert.is(s1.children.length, 1);
+        test('the ended stream should not have adopted children');
+        assert.is(s2.children.length, 0);
+    });
+
     test('Stream::log()', function() {
         var oldConsoleLog;
 

@@ -39,6 +39,33 @@ test('3-stream-listeners-test.js', function() {
         assert.eq(s.endListeners, []);
     });
 
+    test('Stream::done()', function() {
+        test('calling on a stream that has ended', function() {
+            var s = stream().set(1).end();
+            var doneCalled = 0;
+            s.done(function() {
+                doneCalled++;
+            });
+
+            assert.is(doneCalled, 1);
+        });
+
+        test('end listener is called when stream ends', function() {
+            var s = stream();
+            var doneCalled = 0;
+            s.done(function() {
+                doneCalled++;
+            });
+            assert.is(doneCalled, 0);
+            s.end();
+            assert.is(doneCalled, 1);
+            test('and it is called only once');
+            s.end();
+            assert.is(doneCalled, 1);
+        });
+    });
+
+
     test('Stream::then()', function() {
         // TODO
     })
