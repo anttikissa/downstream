@@ -126,7 +126,7 @@ test('1-stream-test.js', function() {
                 s = stream();
                 s.log('first');
                 s.log('second');
-                assert.is(s.listeners.length, 2);
+                assert.is(s.callbacks.length, 2);
                 s.set(2);
                 assert.eq(log, [['first', 2], ['second', 2]]);
             } finally {

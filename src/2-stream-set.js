@@ -92,7 +92,7 @@ Stream.prototype.set = function(value) {
             s.update.apply(s, s.parents);
         }
 
-        s.listeners.forEach(function(listener) {
+        s.callbacks.forEach(function(listener) {
             if (s.wasUpdated()) {
                 listener(s.value);
             }
@@ -187,14 +187,14 @@ Stream.prototype.end = function(value) {
 
     this.state = 'ended';
 
-    if (this.endListeners) {
-        this.endListeners.forEach(listener => {
+    if (this.endCallbacks) {
+        this.endCallbacks.forEach(listener => {
             listener(this.value);
         });
-        delete this.endListeners;
+        delete this.endCallbacks;
     }
 
-    this.listeners = [];
+    this.callbacks = [];
 
     // Tell children I'm done here, and forget them
     this.children.forEach(child => {

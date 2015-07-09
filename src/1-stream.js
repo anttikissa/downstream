@@ -34,7 +34,7 @@ function Stream(parentOrParents = [], options = {}) {
     this.parents = [].concat(parentOrParents);
 
     this.children = [];
-    this.listeners = [];
+    this.callbacks = [];
     // state is one of 'active', 'ended', or 'error'
     this.state = 'active';
 

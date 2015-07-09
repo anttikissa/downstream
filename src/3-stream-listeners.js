@@ -4,7 +4,7 @@
 // This file is about listeners: adding and removing them from streams.
 //
 // `Stream::forEach()` is the primary way to add listeners. Internally, it calls
-// `Stream::addListener()`, and you can call `Stream::removeListener` to remove
+// `Stream::addCallback()`, and you can call `Stream::removeCallback` to remove
 // the link to the listener.
 //
 // Eventually, there will be possibility to listen to errors and ends in
@@ -37,23 +37,23 @@ Stream.prototype.forEach = function(f) {
         f(this.value);
     }
 
-    this.addListener(f);
+    this.addCallback(f);
 
     return this;
 };
 
-// Stream::addListener(Function f)
+// Stream::addCallback(Function f)
 //
 // Add `f` to `this.listeners`.
-Stream.prototype.addListener = function(f) {
-    this.listeners.push(f);
+Stream.prototype.addCallback = function(f) {
+    this.callbacks.push(f);
 };
 
-// Stream::removeListener(Function f)
+// Stream::removeCallback(Function f)
 //
 // Remove the first instance of `f` from `this.listeners`, if it is there.
-Stream.prototype.removeListener = function(f) {
-    removeFirst(this.listeners, f);
+Stream.prototype.removeCallback = function(f) {
+    removeFirst(this.callbacks, f);
 };
 
 // Stream::then(Function f) -> Stream
@@ -85,12 +85,12 @@ Stream.prototype.then = function(f) {
     var values = stream();
     var result = values.flatMap(makeStream);
 
-    function thenEndListener(finalValue) {
+    function thenEndCallback(finalValue) {
         var value = f(finalValue);
         values.end(value);
     }
 
-    this.addEndListener(thenEndListener);
+    this.addEndCallback(thenEndCallback);
 
     return result;
 };
@@ -107,24 +107,24 @@ Stream.prototype.done = function(f) {
         return;
     }
 
-    this.addEndListener(f);
+    this.addEndCallback(f);
 };
 
-// Stream::addEndListener(Function f)
+// Stream::addEndCallback(Function f)
 //
-// Add `f` to `this.endListeners`, which is initialized lazily.
-Stream.prototype.addEndListener = function(f) {
-    if (!this.endListeners) {
-        this.endListeners = [];
+// Add `f` to `this.endCallbacks`, which is initialized lazily.
+Stream.prototype.addEndCallback = function(f) {
+    if (!this.endCallbacks) {
+        this.endCallbacks = [];
     }
-    this.endListeners.push(f);
+    this.endCallbacks.push(f);
 };
 
-// Stream::removeEndListener(Function f)
+// Stream::removeEndCallback(Function f)
 //
-// Remove listener from `endListeners`.
-Stream.prototype.removeEndListener = function(f) {
-    if (this.endListeners) {
-        removeFirst(this.endListeners, f);
+// Remove listener from `endCallbacks`.
+Stream.prototype.removeEndCallback = function(f) {
+    if (this.endCallbacks) {
+        removeFirst(this.endCallbacks, f);
     }
 };

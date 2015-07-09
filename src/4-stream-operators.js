@@ -1,5 +1,5 @@
 //
-// 4-stream-listeners.js
+// 4-stream-operators.js
 //
 // This file defines operators - building blocks that you can use to combine
 // streams into complex structures.
