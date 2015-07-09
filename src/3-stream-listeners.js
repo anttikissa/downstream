@@ -27,6 +27,11 @@
 // current value.
 //
 // Returns the stream itself.
+//
+//  var s = stream();
+//  s.set(1);
+//  s.forEach(function() { console.log(value); });  // -> 1
+//  s.set(2);                                       // -> 2
 Stream.prototype.forEach = function(f) {
     if (this.hasValue()) {
         f(this.value);
@@ -58,15 +63,16 @@ Stream.prototype.removeListener = function(f) {
 // returns a value, the resulting stream will end with that value. If it returns
 // a stream, the resulting stream will update with the returned stream's values.
 //
-// TODO good example
-// TODO THIS IS BROKEN... it'll be fun continuing from here
+// TODO Add a good example
+// TODO simplify the code - flatMap is not needed and complicates the behavior
+// needlessly
 Stream.prototype.then = function(f) {
     // `values` will be a stream (possibly) containing the value that `f`
     // returns
     var values = stream();
     var result = values.flatMap(function(value) {
         if (value instanceof Stream) {
-            return stream;
+            return value;
         }
         return stream().set(value);
     });
@@ -81,7 +87,7 @@ Stream.prototype.then = function(f) {
 
     this.addEndListener(function(finalValue) {
         var value = f(finalValue);
-        values.set(value);
+        values.end(value);
     });
 
     return result;
