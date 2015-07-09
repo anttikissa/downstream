@@ -560,28 +560,30 @@ Stream.prototype.removeListener = function (f) {
 // TODO simplify the code - flatMap is not needed and complicates the behavior
 // needlessly
 Stream.prototype.then = function (f) {
-    // `values` will be a stream (possibly) containing the value that `f`
-    // returns
-    var values = stream();
-    var result = values.flatMap(function (value) {
+    // If `value` is a Stream, return `value`
+    // If not, return a stream whose value is `value`.
+    function makeStream(value) {
         if (value instanceof Stream) {
             return value;
         }
         return stream().set(value);
-    });
-
-    // Can we call f instantly?
-    // TODO Actually flatMap not necessary in that case
-    if (this.hasEnded()) {
-        var value = f(this.value);
-        values.set(value);
-        return result;
     }
 
-    this.addEndListener(function (finalValue) {
+    if (this.hasEnded()) {
+        return makeStream(f(this.value));
+    }
+
+    // `result` is a stream that will follow the stream (or value converted to
+    // stream) returned by `f`. This is achieved using `flatMap`.
+    var values = stream();
+    var result = values.flatMap(makeStream);
+
+    function thenEndListener(finalValue) {
         var value = f(finalValue);
         values.end(value);
-    });
+    }
+
+    this.addEndListener(thenEndListener);
 
     return result;
 };
