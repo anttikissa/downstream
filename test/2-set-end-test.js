@@ -1,4 +1,4 @@
-test('2-stream-set-test.js', function() {
+test('2-set-end-test.js', function() {
     test('Stream::set()', function() {
         test('sets the value', function() {
             var s = stream();

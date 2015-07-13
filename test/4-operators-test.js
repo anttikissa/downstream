@@ -1,4 +1,4 @@
-test('4-stream-operators-test.js', function() {
+test('4-operators-test.js', function() {
     function inc(x) {
         return x + 1;
     }

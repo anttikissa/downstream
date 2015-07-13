@@ -263,7 +263,7 @@ Stream.prototype.log = function (prefix) {
 };
 
 //
-// 2-stream-set.js
+// 2-set-end.js
 //
 // This file contains methods that can be used to modify streams' state:
 //
@@ -492,7 +492,9 @@ Stream.prototype.parentDone = function (parent) {
 };
 
 //
-// 3-stream-listeners.js
+// 3-listeners.js
+//
+// TODO talk about callbacks instead
 //
 // This file is about listeners: adding and removing them from streams.
 //
@@ -623,7 +625,7 @@ Stream.prototype.removeEndCallback = function (f) {
 };
 
 //
-// 4-stream-operators.js
+// 4-operators.js
 //
 // This file defines operators - building blocks that you can use to combine
 // streams into complex structures.

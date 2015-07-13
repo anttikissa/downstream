@@ -1,5 +1,5 @@
 //
-// 2-stream-set.js
+// 2-set-end.js
 //
 // This file contains methods that can be used to modify streams' state:
 //

@@ -1,4 +1,4 @@
-test('3-stream-callbacks-test.js', function() {
+test('3-listeners-test.js', function() {
     test('Stream::addCallback() and Stream::removeCallback()', function() {
         var s = stream();
         function f() {}

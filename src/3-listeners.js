@@ -1,5 +1,7 @@
 //
-// 3-stream-listeners.js
+// 3-listeners.js
+//
+// TODO talk about callbacks instead
 //
 // This file is about listeners: adding and removing them from streams.
 //
