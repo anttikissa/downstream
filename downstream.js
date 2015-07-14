@@ -1009,6 +1009,20 @@ Stream.prototype.flatMap = function (f) {
 //     clearTimeout(handle);
 // }
 
+function generatorStream(options) {
+    var result = stream([], options);
+
+    function run() {
+        while (!this.hasEnded()) {
+            this.tick();
+        }
+    }
+
+    result.run = run;
+
+    return result;
+}
+
 // stream.from(Array array) -> Stream
 //
 // Produce all values in `array`, then end.
@@ -1023,45 +1037,86 @@ Stream.prototype.flatMap = function (f) {
 // TODO make it work on all iterables
 stream.from = function (array) {
     var state = typeof array === 'string' ? array.split('') : array.slice();
-    return stream([], {
-        state: state,
 
-        // Could be mixed in from somewhere
-        // start: function() {
-        //     if (!this.timer) {
-        //         this.scheduleNext();
-        //     }
-        //
-        //     return this;
-        // },
-        //
-        // stop: function() {
-        //     if (this.timer) {
-        //         unschedule(timer);
-        //         delete this.timer;
-        //     }
-        //
-        //     return this;
-        // },
-        //
-        // scheduleNext: function() {
-        //     this.timer = schedule(() => {
-        //         this.tick();
-        //     });
-        // },
-        //
-
-        // Produce the next value or end the stream
-        tick: function tick() {
-            if (this.state.length) {
-                var next = this.state.shift();
-                this.set(next);
-            } else {
-                this.end();
-            }
+    function fromArrayTick() {
+        if (this.state.length) {
+            var next = this.state.shift();
+            this.set(next);
+        } else {
+            this.end();
         }
+    }
+
+    return generatorStream({
+        state: state,
+        tick: fromArrayTick
     });
 };
 
+// stream.from(number start, optional number end, number step = 1) -> Stream
+//
+// Produce numbers from `start` to `end` (inclusive), then end.
+//
+// `step` can be negative.
+//
+// If `end` is not specified, produce numbers indefinitely.
+//
+//  var s = stream.range(0, 10, 2);
+//
+//  s: 2 4 6 8 10
+stream.range = function (start, end) {
+    var step = arguments[2] === undefined ? 1 : arguments[2];
+
+    var direction = step > 0 ? 1 : -1;
+
+    var state = {
+        next: start,
+        end: end !== undefined ? end : Infinity * direction,
+        step: step
+    };
+
+    function rangeTick() {
+        var direction = step > 0 ? 1 : -1;
+
+        if (direction * this.state.next <= direction * this.state.end) {
+            this.set(this.state.next);
+            this.state.next += this.state.step;
+        } else {
+            this.end();
+        }
+    }
+
+    return generatorStream({
+        state: state,
+        tick: rangeTick
+    });
+}
+
+// Could be mixed in from somewhere
+// start: function() {
+//     if (!this.timer) {
+//         this.scheduleNext();
+//     }
+//
+//     return this;
+// },
+//
+// stop: function() {
+//     if (this.timer) {
+//         unschedule(timer);
+//         delete this.timer;
+//     }
+//
+//     return this;
+// },
+//
+// scheduleNext: function() {
+//     this.timer = schedule(() => {
+//         this.tick();
+//     });
+// },
+//
+
 // end of downstream.js
 //# sourceMappingURL=downstream.js.map
+;
