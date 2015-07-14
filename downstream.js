@@ -82,10 +82,10 @@ function assertFunction(f) {
 
 // assertActive(Stream stream)
 //
-// Throw user-readable error if `stream` is ended or in error state
+// Throw user-readable error if `stream` is ended or in error phase
 function assertActive(stream) {
-    if (stream.state !== 'active') {
-        throw new Error('stream is in state \'' + stream.state + '\', should be \'active\'');
+    if (stream.phase !== 'active') {
+        throw new Error('stream is in phase \'' + stream.phase + '\', should be \'active\'');
     }
 }
 
@@ -140,8 +140,8 @@ function Stream() {
 
     this.children = [];
     this.callbacks = [];
-    // state is one of 'active', 'ended', or 'error'
-    this.state = 'active';
+    // phase is one of 'active', 'ended', or 'error'
+    this.phase = 'active';
 
     this.parents.forEach(function (parent) {
         if (!(parent instanceof Stream)) {
@@ -174,7 +174,7 @@ function Stream() {
         }
     }
 
-    // Establish the initial state: if some of my parents have ended, it might
+    // Establish the initial phase: if some of my parents have ended, it might
     // be necessary to end this stream, too. Calling `parentDone` is the
     // established way to do this.
     this.parents.forEach(function (parent) {
@@ -195,7 +195,7 @@ Stream.prototype.hasValue = function () {
 //
 // Has this stream ended?
 Stream.prototype.hasEnded = function () {
-    return this.state === 'ended';
+    return this.phase === 'ended';
 };
 
 // Stream::addChild(Stream child)
@@ -206,7 +206,7 @@ Stream.prototype.hasEnded = function () {
 // function gets called. As an optimization, the child will be added only for
 // active streams, since that's the only kind of stream that can update.
 Stream.prototype.addChild = function (child) {
-    if (this.state === 'active') {
+    if (this.phase === 'active') {
         this.children.push(child);
     }
 };
@@ -227,7 +227,7 @@ Stream.prototype.removeChild = function (child) {
 // method. As with `addChild()`, do nothing if the parent is not active.
 // So the child cannot assume that this will modify its `.parents`.
 Stream.prototype.addParent = function (parent) {
-    if (parent.state === 'active') {
+    if (parent.phase === 'active') {
         this.parents.push(parent);
         parent.addChild(this);
     }
@@ -265,7 +265,7 @@ Stream.prototype.log = function (prefix) {
 //
 // 2-set-end.js
 //
-// This file contains methods that can be used to modify streams' state:
+// This file contains methods that can be used to modify streams' phase:
 //
 // - `Stream::set()` and the associated machinery
 // - `Stream::end()`
@@ -426,7 +426,7 @@ stream.updateOrder = function (source) {
 // After the final value has been (optionally) set, ending a stream consists of
 // three steps:
 //
-// - Set the stream's state to `ended`
+// - Set the stream's phase to `ended`
 // - Inform end listeners (see `.done()`, `.then()`) that this stream has ended
 // - Inform children that this stream has ended (using `.parentDone()`)
 //
@@ -447,11 +447,11 @@ Stream.prototype.end = function (value) {
         this.set(value);
     }
 
-    if (this.state === 'ended') {
+    if (this.phase === 'ended') {
         return;
     }
 
-    this.state = 'ended';
+    this.phase = 'ended';
 
     if (this.endCallbacks) {
         this.endCallbacks.forEach(function (listener) {
@@ -1012,12 +1012,19 @@ Stream.prototype.flatMap = function (f) {
 // stream.from(Array array) -> Stream
 //
 // Produce all values in `array`, then end.
+//
+// stream.from(String string) -> Stream
+//
+// Produce all characters in `string`, then end.
+//
 // The resulting stream is a generator stream: you can ask it for values with
 // `.tick()`, or by calling one of the various scheduling methods (TODO)
+//
+// TODO make it work on all iterables
 stream.from = function (array) {
+    var state = typeof array === 'string' ? array.split('') : array.slice();
     return stream([], {
-        // TODO is state better?
-        data: array.slice(),
+        state: state,
 
         // Could be mixed in from somewhere
         // start: function() {
@@ -1046,16 +1053,15 @@ stream.from = function (array) {
 
         // Produce the next value or end the stream
         tick: function tick() {
-            if (this.data.length) {
-                var next = this.data.shift();
+            if (this.state.length) {
+                var next = this.state.shift();
                 this.set(next);
             } else {
                 this.end();
             }
         }
     });
-}
+};
 
 // end of downstream.js
 //# sourceMappingURL=downstream.js.map
-;

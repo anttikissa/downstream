@@ -74,10 +74,10 @@ function assertFunction(f) {
 
 // assertActive(Stream stream)
 //
-// Throw user-readable error if `stream` is ended or in error state
+// Throw user-readable error if `stream` is ended or in error phase
 function assertActive(stream) {
-    if (stream.state !== 'active') {
-        throw new Error("stream is in state '" + stream.state
+    if (stream.phase !== 'active') {
+        throw new Error("stream is in phase '" + stream.phase
             + "', should be 'active'");
     }
 }

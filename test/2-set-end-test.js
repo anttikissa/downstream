@@ -26,7 +26,7 @@ test('2-set-end-test.js', function() {
 
             assert.throws(function() {
                 s.set(123);
-            }, "stream is in state 'ended', should be 'active'");
+            }, "stream is in phase 'ended', should be 'active'");
         });
 
         test('fails if stream not a source stream', function() {
@@ -69,13 +69,13 @@ test('2-set-end-test.js', function() {
             assert.is(s.end(), s);
         });
 
-        test('sets the stream to ended state', function() {
+        test('sets the stream to ended phase', function() {
             var s = stream();
 
-            assert.is(s.state, 'active');
+            assert.is(s.phase, 'active');
             assert(!s.hasEnded());
             s.end();
-            assert.is(s.state, 'ended');
+            assert.is(s.phase, 'ended');
             assert(s.hasEnded());
         });
     });

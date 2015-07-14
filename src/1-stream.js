@@ -35,8 +35,8 @@ function Stream(parentOrParents = [], options = {}) {
 
     this.children = [];
     this.callbacks = [];
-    // state is one of 'active', 'ended', or 'error'
-    this.state = 'active';
+    // phase is one of 'active', 'ended', or 'error'
+    this.phase = 'active';
 
     this.parents.forEach(parent => {
         if (!(parent instanceof Stream)) {
@@ -65,7 +65,7 @@ function Stream(parentOrParents = [], options = {}) {
         }
     }
 
-    // Establish the initial state: if some of my parents have ended, it might
+    // Establish the initial phase: if some of my parents have ended, it might
     // be necessary to end this stream, too. Calling `parentDone` is the
     // established way to do this.
     this.parents.forEach(parent => {
@@ -86,7 +86,7 @@ Stream.prototype.hasValue = function() {
 //
 // Has this stream ended?
 Stream.prototype.hasEnded = function() {
-    return this.state === 'ended';
+    return this.phase === 'ended';
 };
 
 // Stream::addChild(Stream child)
@@ -97,7 +97,7 @@ Stream.prototype.hasEnded = function() {
 // function gets called. As an optimization, the child will be added only for
 // active streams, since that's the only kind of stream that can update.
 Stream.prototype.addChild = function(child) {
-    if (this.state === 'active') {
+    if (this.phase === 'active') {
         this.children.push(child);
     }
 };
@@ -118,7 +118,7 @@ Stream.prototype.removeChild = function(child) {
 // method. As with `addChild()`, do nothing if the parent is not active.
 // So the child cannot assume that this will modify its `.parents`.
 Stream.prototype.addParent = function(parent) {
-    if (parent.state === 'active') {
+    if (parent.phase === 'active') {
         this.parents.push(parent);
         parent.addChild(this);
     }

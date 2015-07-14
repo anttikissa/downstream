@@ -22,12 +22,19 @@
 // stream.from(Array array) -> Stream
 //
 // Produce all values in `array`, then end.
+//
+// stream.from(String string) -> Stream
+//
+// Produce all characters in `string`, then end.
+//
 // The resulting stream is a generator stream: you can ask it for values with
 // `.tick()`, or by calling one of the various scheduling methods (TODO)
+//
+// TODO make it work on all iterables
 stream.from = function(array) {
+    var state = (typeof array === 'string') ? array.split('') : array.slice();
     return stream([], {
-        // TODO is state better?
-        data: array.slice(),
+        state: state,
 
         // Could be mixed in from somewhere
         // start: function() {
@@ -56,12 +63,12 @@ stream.from = function(array) {
 
         // Produce the next value or end the stream
         tick: function() {
-            if (this.data.length) {
-                var next = this.data.shift();
+            if (this.state.length) {
+                var next = this.state.shift();
                 this.set(next);
             } else {
                 this.end();
             }
         }
     });
-}
+};

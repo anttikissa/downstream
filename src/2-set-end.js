@@ -1,7 +1,7 @@
 //
 // 2-set-end.js
 //
-// This file contains methods that can be used to modify streams' state:
+// This file contains methods that can be used to modify streams' phase:
 //
 // - `Stream::set()` and the associated machinery
 // - `Stream::end()`
@@ -162,7 +162,7 @@ stream.updateOrder = function(source) {
 // After the final value has been (optionally) set, ending a stream consists of
 // three steps:
 //
-// - Set the stream's state to `ended`
+// - Set the stream's phase to `ended`
 // - Inform end listeners (see `.done()`, `.then()`) that this stream has ended
 // - Inform children that this stream has ended (using `.parentDone()`)
 //
@@ -181,11 +181,11 @@ Stream.prototype.end = function(value) {
         this.set(value);
     }
 
-    if (this.state === 'ended') {
+    if (this.phase === 'ended') {
         return;
     }
 
-    this.state = 'ended';
+    this.phase = 'ended';
 
     if (this.endCallbacks) {
         this.endCallbacks.forEach(listener => {
